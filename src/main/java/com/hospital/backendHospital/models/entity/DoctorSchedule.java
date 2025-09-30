@@ -29,7 +29,7 @@ public class DoctorSchedule {
 
     @Column(nullable = false)
     private LocalTime endTime;
-
+    
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
