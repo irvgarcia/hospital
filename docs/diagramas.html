@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Diagramas Backend Hospital</title>
+<style>
+  @page { size: A3 landscape; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: #1f2933; margin: 0; }
+  .page { page-break-after: always; height: 268mm; display: flex; flex-direction: column; }
+  @page vertical { size: A3 portrait; margin: 12mm; }
+  .page.vertical { page: vertical; height: 395mm; }
+  .page:last-child { page-break-after: auto; }
+  h1 { font-size: 34px; margin: 0 0 8px; }
+  h2 { font-size: 22px; margin: 0 0 4px; color: #0b4f6c; border-bottom: 2px solid #0b4f6c; padding-bottom: 4px; }
+  p.sub { margin: 4px 0 10px; font-size: 13px; color: #52606d; }
+  .diagram { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .diagram { position: relative; min-height: 0; }
+  .diagram pre { margin: 0; position: absolute; inset: 0; }
+  .diagram svg { display: block; width: 100%; height: 100%; max-width: none !important; }
+  .cover { justify-content: center; align-items: flex-start; padding: 0 40mm; }
+  .cover table { border-collapse: collapse; font-size: 15px; margin-top: 20px; }
+  .cover td { padding: 6px 16px 6px 0; vertical-align: top; }
+  .cover td:first-child { font-weight: 600; color: #0b4f6c; }
+  ol { font-size: 16px; line-height: 1.8; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+</head>
+<body>
+
+<section class="page cover">
+  <h1>Backend Hospital</h1>
+  <p class="sub" style="font-size:18px">Diagrama de base de datos y diagramas de diseño del software</p>
+  <table>
+    <tr><td>Proyecto</td><td>backendHospital 0.0.1-SNAPSHOT</td></tr>
+    <tr><td>Tecnologías</td><td>Java 17 · Spring Boot 3.4.5 · Spring Security + JWT · Spring Data JPA (Hibernate) · MySQL · MapStruct · Lombok · OpenPDF</td></tr>
+    <tr><td>Arquitectura</td><td>API REST en capas: Controller → Service (interfaz + impl) → Repository → Entidad JPA, con DTOs y mappers</td></tr>
+    <tr><td>Fecha</td><td>27/10/2026</td></tr>
+  </table>
+  <h2 style="margin-top:30px; border:0">Contenido</h2>
+  <ol>
+    <li>Diagrama Entidad–Relación de la base de datos</li>
+    <li>Diagrama de arquitectura en capas</li>
+    <li>Diagrama de clases del modelo de dominio</li>
+    <li>Diagrama de dependencias Controller → Service → Repository</li>
+    <li>Diagrama de secuencia: autenticación y petición protegida con JWT</li>
+  </ol>
+</section>
+
+<section class="page">
+  <h2>1. Diagrama Entidad–Relación (MySQL · hospitalbd)</h2>
+  <p class="sub">Generado a partir de las entidades JPA. PK = llave primaria, FK = llave foránea, UK = único. Las tablas <b>user_roles</b> y <b>role_permissions</b> son tablas intermedias de relaciones muchos-a-muchos.</p>
+  <div class="diagram"><pre class="mermaid">
+erDiagram
+  users {
+    BIGINT id PK
+    VARCHAR email UK
+    VARCHAR first_name
+    VARCHAR last_name
+    VARCHAR password
+    BOOLEAN active
+  }
+  roles {
+    BIGINT id PK
+    VARCHAR role_enum "ADMIN|PATIENT|DOCTOR|RECEPTIONIST"
+  }
+  permissions {
+    BIGINT id PK
+    VARCHAR name UK
+  }
+  user_roles {
+    BIGINT user_id PK,FK
+    BIGINT role_id PK,FK
+  }
+  role_permissions {
+    BIGINT role_id PK,FK
+    BIGINT permission_id PK,FK
+  }
+  token {
+    BIGINT id PK
+    VARCHAR token UK
+    VARCHAR token_type "BEARER"
+    BOOLEAN revoked
+    BOOLEAN expired
+    BIGINT user_id FK
+  }
+  patients {
+    BIGINT id PK
+    BIGINT user_id FK
+    VARCHAR phone_number
+    VARCHAR address
+    DATE date_of_birth
+    VARCHAR gender
+    VARCHAR allergies
+    VARCHAR blood_type
+    VARCHAR chronic_diseases
+    VARCHAR current_medications
+    VARCHAR emergency_contact
+    VARCHAR emergency_contact_name
+    VARCHAR emergency_contact_relation
+    DOUBLE height
+    DOUBLE weight
+    DATE register_date
+    BOOLEAN smoker
+    BOOLEAN active
+  }
+  doctors {
+    BIGINT id PK
+    BIGINT user_id FK
+    BIGINT specialty_id FK
+    VARCHAR phone_number
+    DATE register_date
+    BOOLEAN active
+  }
+  specialties {
+    BIGINT id PK
+    VARCHAR name UK
+    VARCHAR description
+    DECIMAL cost
+    BOOLEAN active
+  }
+  doctor_schedules {
+    BIGINT id PK
+    BIGINT doctor_id FK
+    TINYINT day_of_week
+    TIME start_time
+    TIME end_time
+  }
+  appointments {
+    BIGINT id PK
+    BIGINT patient_id FK
+    BIGINT doctor_id FK
+    DATE date
+    TIME start_time
+    TIME end_time
+    TINYINT status "CANCELLED|PENDING|COMPLETED"
+    DECIMAL total
+  }
+  medical_record {
+    BIGINT id PK
+    BIGINT patient_id FK
+    DATE date
+    VARCHAR diagnostics
+    VARCHAR treatment
+  }
+  rooms {
+    BIGINT id PK
+    VARCHAR name UK
+    INT capacity
+    BOOLEAN available
+  }
+  hospitalizations {
+    BIGINT id PK
+    BIGINT patient_id FK
+    BIGINT doctor_id FK
+    BIGINT room_id FK
+    DATE admission_date
+    DATE discharge_date
+    VARCHAR reason
+    BOOLEAN active
+  }
+  medical_supplies {
+    BIGINT id PK
+    VARCHAR name UK
+    INT quantity
+    INT minimum_stock
+    VARCHAR unity "MILLIGRAM|MILLILITER|BOX"
+    BOOLEAN active
+  }
+  supply_movements {
+    BIGINT id PK
+    BIGINT supply_id FK
+    BIGINT performed_by FK
+    VARCHAR type "IN|OUT"
+    INT quantity_changed
+    DATETIME timestamp
+  }
+  supply_usages {
+    BIGINT id PK
+    BIGINT hospitalization_id FK
+    BIGINT supply_id FK
+    INT quantity_used
+    DATETIME used_at
+  }
+  files {
+    BINARY id PK "UUID"
+    VARCHAR name
+    VARCHAR type
+    LONGBLOB data
+  }
+
+  users ||--o{ user_roles : ""
+  roles ||--o{ user_roles : ""
+  roles ||--o{ role_permissions : ""
+  permissions ||--o{ role_permissions : ""
+  users ||--o{ token : "tiene"
+  users ||--o| patients : "es"
+  users ||--o| doctors : "es"
+  specialties ||--o{ doctors : "agrupa"
+  doctors ||--o{ doctor_schedules : "trabaja en"
+  patients ||--o{ appointments : "agenda"
+  doctors ||--o{ appointments : "atiende"
+  patients ||--o| medical_record : "tiene"
+  patients ||--o{ hospitalizations : "ingresa"
+  doctors ||--o{ hospitalizations : "responsable"
+  rooms ||--o{ hospitalizations : "aloja"
+  hospitalizations ||--o{ supply_usages : "consume"
+  medical_supplies ||--o{ supply_usages : "usado en"
+  medical_supplies ||--o{ supply_movements : "registra"
+  users ||--o{ supply_movements : "realiza"
+  </pre></div>
+</section>
+
+<section class="page">
+  <h2>2. Diagrama de arquitectura en capas</h2>
+  <p class="sub">Flujo de una petición HTTP a través de la aplicación Spring Boot. Cada módulo de negocio sigue el mismo patrón vertical.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart TB
+  client(["Cliente (Frontend / Swagger / Postman)"])
+
+  subgraph sec["Capa de Seguridad · config"]
+    direction LR
+    sc["SecurityConfig<br/>reglas por rol/permiso"]
+    jf["JwtAuthenticationFilter<br/>OncePerRequestFilter"]
+    ac["AppConfig<br/>AuthenticationProvider, PasswordEncoder"]
+  end
+
+  subgraph auth["Módulo auth"]
+    direction LR
+    authc["AuthController<br/>/auth/register · /login · /refresh-token"]
+    auths["AuthService"]
+    jwts["JwtService"]
+    uds["UserDetailService"]
+  end
+
+  subgraph ctrl["Capa de Presentación · controllers (/api/v1/...)"]
+    direction LR
+    c1["Patient"] --- c2["Doctor"] --- c3["DoctorSchedule"] --- c4["Appointment"] --- c5["MedicalRecord"] --- c6["Hospitalization"]
+    c7["Room"] --- c8["Specialty"] --- c9["Receptionist"] --- c10["MedicalSupply"] --- c11["SupplyMovement"] --- c12["SupplyUsage"] --- c13["File"]
+  end
+
+  subgraph dto["DTOs · Filtros · Mappers"]
+    direction LR
+    d1["models.dto<br/>Create*/Update*/ *ResponseDto"]
+    d2["models.filters<br/>*FilterRequest"]
+    d3["mappers<br/>MapStruct"]
+  end
+
+  subgraph svc["Capa de Negocio · services"]
+    direction LR
+    si["Interfaces I*Service"] --> sim["Implementaciones services.impl"]
+    pdf["PDFGeneratorService<br/>(OpenPDF)"]
+  end
+
+  subgraph rep["Capa de Acceso a Datos · repositories"]
+    r1["Spring Data JPA<br/>*Repository extends JpaRepository"]
+  end
+
+  subgraph ent["Modelo de Dominio · models.entity"]
+    e1["Entidades JPA + Enums"]
+  end
+
+  ex["GlobalExceptionHandler<br/>@RestControllerAdvice"]
+  db[("MySQL · hospitalbd")]
+
+  client -->|"HTTP + Bearer JWT"| jf
+  jf --> jwts
+  jf --> sc
+  client -->|"login / registro"| authc
+  authc --> auths --> jwts
+  auths --> uds
+  sc --> ctrl
+  ctrl --> dto
+  ctrl --> svc
+  svc --> d3
+  svc --> rep
+  rep --> ent
+  ent -->|"Hibernate ORM"| db
+  ctrl -.->|"excepciones"| ex
+  ex -.->|"respuesta de error JSON"| client
+  </pre></div>
+</section>
+
+<section class="page">
+  <h2>3. Diagrama de clases del modelo de dominio</h2>
+  <p class="sub">Entidades JPA del paquete <b>models.entity</b> (y <b>Token</b> de auth.repository) con sus atributos, enumeraciones y asociaciones.</p>
+  <div class="diagram"><pre class="mermaid">
+classDiagram
+  direction LR
+  class User {
+    -Long id
+    -String email
+    -String firstName
+    -String lastName
+    -String password
+    -boolean active
+    -Set~Role~ roles
+    -List~Token~ tokens
+  }
+  class Role {
+    -Long id
+    -RoleEnum roleEnum
+    -Set~Permission~ permissions
+  }
+  class Permission {
+    -Long id
+    -String name
+  }
+  class Token {
+    -Long id
+    -String token
+    -TokenType tokenType
+    -Boolean revoked
+    -Boolean expired
+    -User user
+  }
+  class Patient {
+    -Long id
+    -User user
+    -String phoneNumber
+    -String address
+    -LocalDate dateOfBirth
+    -String gender
+    -String allergies
+    -String bloodType
+    -String chronicDiseases
+    -String currentMedications
+    -String emergencyContact
+    -Double height
+    -Double weight
+    -boolean smoker
+    -boolean active
+    -List~Appointment~ appointments
+  }
+  class Doctor {
+    -Long id
+    -User user
+    -String phoneNumber
+    -Specialty specialty
+    -LocalDate registerDate
+    -boolean active
+    -List~Appointment~ appointments
+    -List~DoctorSchedule~ schedules
+  }
+  class Specialty {
+    -Long id
+    -String name
+    -String description
+    -BigDecimal cost
+    -boolean active
+  }
+  class DoctorSchedule {
+    -Long id
+    -DayOfWeek dayOfWeek
+    -LocalTime startTime
+    -LocalTime endTime
+  }
+  class Appointment {
+    -Long id
+    -LocalDate date
+    -LocalTime startTime
+    -LocalTime endTime
+    -AppointmentStatus status
+    -BigDecimal total
+  }
+  class MedicalRecord {
+    -Long id
+    -LocalDate date
+    -String diagnostics
+    -String treatment
+  }
+  class Room {
+    -Long id
+    -String name
+    -int capacity
+    -boolean available
+  }
+  class Hospitalization {
+    -Long id
+    -LocalDate admissionDate
+    -LocalDate dischargeDate
+    -String reason
+    -boolean active
+  }
+  class MedicalSupply {
+    -Long id
+    -String name
+    -int quantity
+    -int minimumStock
+    -UnityEnum unity
+    -boolean active
+  }
+  class SupplyMovement {
+    -Long id
+    -MovementType type
+    -int quantityChanged
+    -LocalDateTime timestamp
+  }
+  class SupplyUsage {
+    -Long id
+    -int quantityUsed
+    -LocalDateTime usedAt
+  }
+  class FileEntity {
+    -UUID id
+    -String name
+    -String type
+    -byte[] data
+  }
+  class RoleEnum {
+    &lt;&lt;enumeration&gt;&gt;
+    ADMIN
+    PATIENT
+    DOCTOR
+    RECEPTIONIST
+  }
+  class AppointmentStatus {
+    &lt;&lt;enumeration&gt;&gt;
+    CANCELLED
+    PENDING
+    COMPLETED
+  }
+  class MovementType {
+    &lt;&lt;enumeration&gt;&gt;
+    IN
+    OUT
+  }
+  class UnityEnum {
+    &lt;&lt;enumeration&gt;&gt;
+    MILLIGRAM
+    MILLILITER
+    BOX
+  }
+
+  User "*" --> "*" Role : roles
+  Role "*" --> "*" Permission : permissions
+  User "1" -- "*" Token : tokens
+  Patient "0..1" --> "1" User
+  Doctor "0..1" *-- "1" User
+  Specialty "1" -- "*" Doctor
+  Doctor "1" *-- "*" DoctorSchedule : schedules
+  Patient "1" -- "*" Appointment
+  Doctor "1" -- "*" Appointment
+  MedicalRecord "0..1" --> "1" Patient
+  Hospitalization "*" --> "1" Patient
+  Hospitalization "*" --> "1" Doctor
+  Hospitalization "*" --> "1" Room
+  SupplyUsage "*" --> "1" Hospitalization
+  SupplyUsage "*" --> "1" MedicalSupply
+  SupplyMovement "*" --> "1" MedicalSupply
+  SupplyMovement "*" --> "1" User : performedBy
+  Role ..> RoleEnum
+  Appointment ..> AppointmentStatus
+  SupplyMovement ..> MovementType
+  MedicalSupply ..> UnityEnum
+  </pre></div>
+</section>
+
+<section class="page vertical">
+  <h2>4. Dependencias Controller → Service → Repository</h2>
+  <p class="sub">Inyección de dependencias por constructor (Lombok @RequiredArgsConstructor). Cada controlador depende de la interfaz I*Service; la implementación usa repositorios y mappers MapStruct. AuthService (registro/login) reutiliza PatientService para crear pacientes.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph C["Controllers"]
+    PC[PatientController]
+    DC[DoctorController]
+    DSC[DoctorScheduleController]
+    APC[AppointmentController]
+    MRC[MedicalRecordController]
+    HC[HospitalizationController]
+    RC[RoomController]
+    SPC[SpecialtyController]
+    REC[ReceptionistController]
+    MSC[MedicalSupplyController]
+    SMC[SupplyMovementController]
+    SUC[SupplyUsageController]
+    FC[FileController]
+  end
+  subgraph S["Services (impl)"]
+    PS[PatientService]
+    DS[DoctorService]
+    DSS[DoctorScheduleService]
+    APS[AppointmentService]
+    MRS[MedicalRecordService]
+    HS[HospitalizationService]
+    RS[RoomService]
+    SPS[SpecialtyService]
+    RES[ReceptionistService]
+    MSS[MedicalSupplyService]
+    SMS[SupplyMovementService]
+    SUS[SupplyUsageService]
+    FS[FileService]
+    PDFS[PDFGeneratorService]
+  end
+  subgraph R["Repositories"]
+    PR[(PatientRepository)]
+    DR[(DoctorRepository)]
+    DSR[(DoctorScheduleRepository)]
+    AR[(AppointmentRepository)]
+    MRR[(MedicalRecordRepository)]
+    HR[(HospitalizationRepository)]
+    RR[(RoomRepository)]
+    SPR[(SpecialtyRepository)]
+    UR[(UserRepository)]
+    ROR[(RoleRepository)]
+    MSR[(MedicalSupplyRepository)]
+    SMR[(SupplyMovementRepository)]
+    SUR[(SupplyUsageRepository)]
+    FR[(FileRepository)]
+  end
+  AUTH{{AuthService}}
+
+  PC --> PS
+  DC --> DS
+  DSC --> DSS
+  APC --> APS
+  MRC --> MRS
+  HC --> HS
+  RC --> RS
+  SPC --> SPS
+  REC --> RES
+  MSC --> MSS
+  SMC --> SMS
+  SUC --> SUS
+  FC --> FS
+  FC --> PDFS
+
+  PS --> PR
+  DS --> DR
+  DS --> DSR
+  DS --> SPR
+  DS --> UR
+  DS --> ROR
+  DSS --> DSR
+  DSS --> DR
+  APS --> AR
+  APS --> PR
+  APS --> DR
+  MRS --> MRR
+  MRS --> PR
+  HS --> HR
+  HS --> PR
+  HS --> RR
+  RS --> RR
+  SPS --> SPR
+  RES --> UR
+  RES --> ROR
+  MSS --> MSR
+  SMS --> SMR
+  SMS --> MSR
+  SUS --> SUR
+  SUS --> HR
+  SUS --> MSR
+  SUS --> SMR
+  FS --> FR
+  PDFS --> FR
+  PDFS --> PR
+
+  AUTH --> UR
+  AUTH --> ROR
+  AUTH --> PS
+  </pre></div>
+</section>
+
+<section class="page">
+  <h2>5. Diagrama de secuencia: autenticación JWT</h2>
+  <p class="sub">Inicio de sesión y posterior acceso a un endpoint protegido (ejemplo: crear una cita).</p>
+  <div class="diagram"><pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as Usuario
+  participant AC as AuthController
+  participant AS as AuthService
+  participant AM as AuthenticationManager
+  participant UR as UserRepository
+  participant JS as JwtService
+  participant TR as TokenRepository
+  participant F as JwtAuthenticationFilter
+  participant APC as AppointmentController
+  participant APS as AppointmentService
+  participant DB as MySQL
+
+  U->>AC: POST /auth/login {email, password}
+  AC->>AS: authenticate(AuthRequest)
+  AS->>AM: authenticate(email, password)
+  AM->>UR: findByEmail(email)
+  UR->>DB: SELECT users
+  DB-->>UR: User + roles
+  AM-->>AS: autenticado (BCrypt OK)
+  AS->>JS: generateToken(user) / generateRefreshToken(user)
+  JS-->>AS: access + refresh token
+  AS->>TR: revocar tokens previos y guardar Token
+  TR->>DB: INSERT/UPDATE token
+  AS-->>AC: TokenResponse
+  AC-->>U: 200 {accessToken, refreshToken}
+
+  U->>F: POST /api/v1/appointments (Authorization: Bearer JWT)
+  F->>JS: extractUsername / isTokenValid
+  F->>TR: token no revocado ni expirado
+  F->>F: SecurityContextHolder.setAuthentication()
+  F->>APC: petición autorizada según rol/permiso
+  APC->>APS: create(CreateAppointmentDto)
+  APS->>DB: valida paciente, doctor y guarda Appointment
+  DB-->>APS: Appointment
+  APS-->>APC: AppointmentResponseDto
+  APC-->>U: 201 Created
+  </pre></div>
+</section>
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: "default", securityLevel: "loose",
+    er: { useMaxWidth: true }, flowchart: { useMaxWidth: true, htmlLabels: true },
+    class: { useMaxWidth: true }, sequence: { useMaxWidth: true } });
+  mermaid.run().then(() => {
+    document.querySelectorAll(".diagram svg").forEach(svg => {
+      svg.removeAttribute("width"); svg.removeAttribute("height");
+      svg.style.maxWidth = "none"; svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    }); document.body.setAttribute("data-done", "1"); });
+</script>
+</body>
+</html>
