@@ -1,6 +1,10 @@
 package com.hospital.backendHospital.exceptions;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -30,6 +34,42 @@ public class GlobalExceptionHandler {
         Map<String, String> errorMap = new HashMap<>();
         errorMap.put("error", "Datos inválidos");
         errorMap.put("detalle", ex.getMessage());
+        return errorMap;
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, String> handleDisabledException(DisabledException ex) {
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "Usuario desactivado");
+        errorMap.put("detalle", "La cuenta esta desactivada");
+        return errorMap;
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Map<String, String> handleAuthenticationException(AuthenticationException ex) {
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "No autenticado");
+        errorMap.put("detalle", ex instanceof InvalidTokenException ? ex.getMessage() : "Credenciales invalidas");
+        return errorMap;
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, String> handleAccessDeniedException(AccessDeniedException ex) {
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "Acceso denegado");
+        errorMap.put("detalle", "Tu rol no tiene permiso para este recurso");
+        return errorMap;
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNoResourceFoundException(NoResourceFoundException ex) {
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "Recurso no encontrado");
+        errorMap.put("detalle", "La ruta /" + ex.getResourcePath() + " no existe");
         return errorMap;
     }
 

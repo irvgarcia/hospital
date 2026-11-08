@@ -1,5 +1,7 @@
 package com.hospital.backendHospital.services;
 
+import com.hospital.backendHospital.auth.service.TokenService;
+
 import com.hospital.backendHospital.exceptions.EntityNotFoundException;
 import com.hospital.backendHospital.exceptions.InvalidDataException;
 import com.hospital.backendHospital.mappers.DoctorMapper;
@@ -41,6 +43,7 @@ class DoctorServiceTest {
     @Mock private DoctorRepository doctorRepository;
     @Mock private DoctorScheduleRepository doctorScheduleRepository;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private TokenService tokenService;
     @Mock private DoctorMapper doctorMapper;
 
     @InjectMocks
@@ -373,6 +376,7 @@ class DoctorServiceTest {
         assertFalse(doctor.isActive());
         assertFalse(user.isActive());
         verify(doctorRepository).save(doctor);
+        verify(tokenService).revokeAllUserTokens(user);
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.hospital.backendHospital.models.filters.PatientFilterRequest;
 import com.hospital.backendHospital.repositories.PatientRepository;
 import com.hospital.backendHospital.repositories.UserRepository;
 import com.hospital.backendHospital.services.IPatientService;
+import com.hospital.backendHospital.auth.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ public class PatientService implements IPatientService {
     private final PatientRepository patientRepository;
     private final PatientMapper patientMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
 
     @Override
@@ -128,6 +130,7 @@ public class PatientService implements IPatientService {
 
         patient.setActive(false);
         patient.getUser().setActive(false);
+        tokenService.revokeAllUserTokens(patient.getUser());
 
         patientRepository.save(patient);
     }
