@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,13 @@ public class AppointmentService implements IAppointmentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AppointmentResponseDto> filterAppointments(AppointmentFilterRequest filter, Pageable pageable) {
+    public Page<AppointmentResponseDto> filterAppointments(User user, AppointmentFilterRequest filter, Pageable pageable) {
+        // Un doctor solo puede ver sus propias citas, sin importar el doctorId que envie
+        if (user.hasRole(RoleEnum.DOCTOR) && !user.hasRole(RoleEnum.ADMIN)) {
+            Doctor doctor = doctorRepository.findByUser(user).orElseThrow(()-> new EntityNotFoundException("Doctor not found"));
+            filter.setDoctorId(doctor.getId());
+        }
+
         Specification<Appointment> spec = Specification.where(null);
 
         if (filter.getPatientId() != null) {
@@ -91,7 +98,7 @@ public class AppointmentService implements IAppointmentService {
     @Override
     @Transactional
     public AppointmentResponseDto createAppointment(User user, CreateAppointmentDto createAppointmentDto) {
-        Patient patient = patientRepository.findByUser(user).orElseThrow(()-> new EntityNotFoundException("Patient not found"));
+        Patient patient = resolvePatientForBooking(user, createAppointmentDto);
 
         Doctor doctor = doctorRepository.findById(createAppointmentDto.getDoctorId()).orElseThrow(()-> new EntityNotFoundException("Doctor not found"));
 
@@ -176,8 +183,9 @@ public class AppointmentService implements IAppointmentService {
     public void cancelAppointment(User user, Long id) {
         Appointment appointment = appointmentRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("Appointment not found"));
 
-        if (!appointment.getPatient().getUser().getId().equals(user.getId())){
-            throw new InvalidDataException("Error cancelling appointment");
+        // ADMIN y RECEPTIONIST cancelan cualquier cita; el PACIENTE solo las suyas
+        if (user.hasRole(RoleEnum.PATIENT) && !appointment.getPatient().getUser().getId().equals(user.getId())){
+            throw new AccessDeniedException("You can only cancel your own appointments");
         }
 
         if (appointment.getStatus().equals(AppointmentStatus.CANCELLED) || appointment.getStatus().equals(AppointmentStatus.COMPLETED)){
@@ -191,5 +199,19 @@ public class AppointmentService implements IAppointmentService {
         appointment.setStatus(AppointmentStatus.CANCELLED);
 
         appointmentRepository.save(appointment);
+    }
+
+    /** El paciente agenda para si mismo; ADMIN y RECEPTIONIST agendan para el paciente indicado en patientId. */
+    private Patient resolvePatientForBooking(User user, CreateAppointmentDto createAppointmentDto) {
+        if (user.hasRole(RoleEnum.PATIENT)) {
+            return patientRepository.findByUser(user).orElseThrow(()-> new EntityNotFoundException("Patient not found"));
+        }
+
+        if (createAppointmentDto.getPatientId() == null) {
+            throw new InvalidDataException("Patient is required");
+        }
+
+        return patientRepository.findById(createAppointmentDto.getPatientId())
+                .orElseThrow(()-> new EntityNotFoundException("Patient not found with id " + createAppointmentDto.getPatientId()));
     }
 }

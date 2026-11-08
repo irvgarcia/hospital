@@ -9,7 +9,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface IAppointmentService {
 
-    Page<AppointmentResponseDto> filterAppointments(AppointmentFilterRequest filter, Pageable pageable);
+    Page<AppointmentResponseDto> filterAppointments(User user, AppointmentFilterRequest filter, Pageable pageable);
 
     Page<AppointmentResponseDto> listAppointmentsByPatient(User user, Pageable pageable);
 

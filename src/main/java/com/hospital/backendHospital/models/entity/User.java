@@ -44,4 +44,8 @@ public class User {
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Token> tokens;
+
+    public boolean hasRole(RoleEnum roleEnum) {
+        return roles.stream().anyMatch(role -> role.getRoleEnum() == roleEnum);
+    }
 }
