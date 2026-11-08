@@ -11,6 +11,7 @@ import com.hospital.backendHospital.models.filters.DoctorFilterRequest;
 import com.hospital.backendHospital.repositories.*;
 import com.hospital.backendHospital.services.IDoctorService;
 import jakarta.persistence.criteria.Join;
+import com.hospital.backendHospital.auth.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +39,7 @@ public class DoctorService implements IDoctorService {
     private final RoleRepository roleRepository;
     private final DoctorMapper doctorMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -220,6 +222,7 @@ public class DoctorService implements IDoctorService {
 
         doctor.setActive(false);
         doctor.getUser().setActive(false);
+        tokenService.revokeAllUserTokens(doctor.getUser());
 
         doctorRepository.save(doctor);
     }

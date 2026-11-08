@@ -16,6 +16,9 @@ import java.time.LocalTime;
 @Builder
 public class CreateAppointmentDto {
 
+    /** Obligatorio cuando agenda ADMIN o RECEPTIONIST. Si agenda un PATIENT se ignora: la cita es suya. */
+    private Long patientId;
+
     @NotNull(message = "Doctor is required")
     private Long doctorId;
 

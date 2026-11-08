@@ -12,6 +12,7 @@ import com.hospital.backendHospital.models.entity.User;
 import com.hospital.backendHospital.repositories.RoleRepository;
 import com.hospital.backendHospital.repositories.UserRepository;
 import com.hospital.backendHospital.services.IReceptionistService;
+import com.hospital.backendHospital.auth.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class ReceptionistService implements IReceptionistService {
     private final RoleRepository roleRepository;
     private final ReceptionistMapper receptionistMapper;
     private final PasswordEncoder passwordEncoder;
+    private final TokenService tokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -96,6 +98,7 @@ public class ReceptionistService implements IReceptionistService {
         User receptionist = userRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("Receptionist not found with id " + id));
 
         receptionist.setActive(false);
+        tokenService.revokeAllUserTokens(receptionist);
 
         userRepository.save(receptionist);
     }
