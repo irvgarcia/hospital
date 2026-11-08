@@ -650,8 +650,23 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 - `./mvnw verify` en verde con Docker corriendo, sin ningún MySQL instalado localmente.
 - `docker compose up -d` + `./mvnw spring-boot:run` levanta la aplicación en local.
 
-### Fase 1 — Autenticación y seguridad (2–3 días)
+### Fase 1 — Autenticación y seguridad (2–3 días) — ✅ COMPLETADA (07/11/2026)
 **Hallazgos:** C7, C8, C9, C10, A13, A14, M10, M14.
+
+> **Decisiones y ajustes al implementarla:**
+> - Matriz de roles aplicada solo a los endpoints que existen hoy. El PACIENTE puede leer doctores, especialidades y horarios. El RECEPCIONISTA agenda y cancela citas (con `patientId` en el body) y gestiona hospitalizaciones. Los endpoints nuevos ("me" del doctor, catálogo, archivos del paciente) quedan para la Fase 6, igual que unificar las rutas (B4).
+> - El DOCTOR puede usar `GET /appointments`, pero el servicio fuerza su propio `doctorId`.
+> - `Token` guarda el **hash SHA-256** del JWT (no el JWT) en una tabla nueva `auth_tokens`. Así evita el límite de `VARCHAR(255)` y una fuga de la tabla no expone tokens. Las tablas viejas `token` y `token_seq` quedan sin uso y se pueden borrar a mano.
+> - Cada JWT lleva un `jti` aleatorio: dos tokens emitidos en el mismo segundo eran idénticos y su hash chocaba (lo detectó `AuthenticationIT`).
+> - Refresh con rotación: cada refresh revoca el par anterior y entrega uno nuevo. Login, refresh y logout dejan una sola sesión activa por usuario.
+> - `application-local.properties` lee el `.env` (`spring.config.import`). `JWT_SECRET` es obligatorio; `ADMIN_EMAIL`/`ADMIN_PASSWORD` son opcionales (si faltan, no se crea el admin; la contraseña exige 12 caracteres). En el perfil `test` no se crea el admin (resuelve el pendiente de la Fase 0).
+> - M10: queda un solo `UserDetailsService`. Los permisos (`CREATE`, `READ`…) se siguen cargando pero nada los usa; la decisión de borrarlos va con el `DataSeeder` (Fase 7).
+>
+> **Pendientes detectados:**
+> - **Admin legado `chucholo`/`1234`:** el seeder nuevo no lo toca, así que sigue existiendo y entrando en cualquier base donde ya se creó. Hay que desactivarlo o borrarlo a mano en cada entorno (incluido producción).
+> - **Producción (Railway):** configurar un `JWT_SECRET` nuevo (rotación; cierra todas las sesiones), `JWT_REFRESH_EXPIRATION=604800000`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. `SWAGGER_USER`/`SWAGGER_PASSWORD` ya no se usan.
+> - `GET /fileManager/pdf/{id}/generate` con un paciente inexistente responde 500: el controlador fija `Content-Type: application/pdf` antes de buscar al paciente y el 404 no se puede escribir como JSON. Se corrige con M7 (Fase 6).
+> - C5 (`/medicalRecords/patients/me` usa el id del usuario) sigue abierto: es de la Fase 2.
 1. Dejar un solo `UserDetailsService` y mapear `disabled(!active)` (C10, M10).
 2. En `JwtAuthenticationFilter`: `try/catch JwtException` y `startsWith("/auth/")` (C7, M14).
 3. En `SecurityConfig`:
@@ -691,6 +706,11 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 4. `@Builder.Default` en todas las colecciones (A5).
 5. Quitar `CascadeType.ALL` de `Specialty.doctor` (A15).
 6. `@Version` en `MedicalSupply`, restricción única `(doctor_id, date, start_time)` en `appointments`, y handler de `OptimisticLockingFailureException` y `DataIntegrityViolationException` que responda 409 (A8).
+7. **Datos de prueba para desarrollo:** una migración de Flyway en una carpeta aparte (por ejemplo `src/main/resources/db/dev-data`) que solo se agrega a `spring.flyway.locations` en el perfil `local`, nunca en `prod` ni en `test`.
+   - Contenido: un usuario por rol (ADMIN, RECEPTIONIST, DOCTOR, PATIENT) más algunos extra, especialidades, doctores con horarios, pacientes con perfil completo, salas, insumos y citas en distintos estados.
+   - Las contraseñas van como hashes BCrypt precalculados. Documentar en este plan (o en el README) el email y la contraseña de prueba de cada rol.
+   - Flyway la ejecuta una sola vez por base. Para recargarla desde cero: `docker compose down -v` y `docker compose up -d`.
+   - Se hace en esta fase y no antes porque el esquema cambia aquí (A1) y en la Fase 6 (M8); un script escrito antes habría que reescribirlo. Si el historial clínico cambia en la Fase 6, se actualiza con una migración nueva en la misma carpeta.
 
 ### Fase 4 — Reglas de negocio (3–4 días)
 **Hallazgos:** A2, A3, A4, A5, A6, A7, A9, M2, M4, M11.
