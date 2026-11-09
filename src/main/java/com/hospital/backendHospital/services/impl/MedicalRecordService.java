@@ -7,6 +7,7 @@ import com.hospital.backendHospital.models.dto.medicalRecord.CreateMedicalRecord
 import com.hospital.backendHospital.models.dto.medicalRecord.MedicalRecordResponseDto;
 import com.hospital.backendHospital.models.entity.MedicalRecord;
 import com.hospital.backendHospital.models.entity.Patient;
+import com.hospital.backendHospital.models.entity.User;
 import com.hospital.backendHospital.repositories.MedicalRecordRepository;
 import com.hospital.backendHospital.repositories.PatientRepository;
 import com.hospital.backendHospital.services.IMedicalRecordService;
@@ -32,6 +33,15 @@ public class MedicalRecordService implements IMedicalRecordService {
         MedicalRecord medicalRecord = medicalRecordRepository.findByPatientId(id).orElseThrow(() -> new EntityNotFoundException("Medical record not found"));
 
         return medicalRecordMapper.toResponseDto(medicalRecord);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MedicalRecordResponseDto getMedicalRecordOfPatientUser(User user) {
+        // El usuario autenticado se traduce a su perfil de paciente: user.id y patient.id son ids distintos
+        Patient patient = patientRepository.findByUser(user).orElseThrow(() -> new EntityNotFoundException("Patient not found"));
+
+        return listMedicalRecordByPatientId(patient.getId());
     }
 
     // Considerar crear historial medico solo para citas completadas
