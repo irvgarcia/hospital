@@ -1,6 +1,8 @@
 package com.hospital.backendHospital.controllers;
 
+import com.hospital.backendHospital.auth.service.AuthService;
 import com.hospital.backendHospital.models.dto.hospitalization.CreateHospitalizationDto;
+import com.hospital.backendHospital.models.entity.User;
 import com.hospital.backendHospital.models.dto.hospitalization.HospitalizationResponseDto;
 import com.hospital.backendHospital.models.filters.HospitalizationFilterRequest;
 import com.hospital.backendHospital.services.IHospitalzationService;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class HospitalizationController {
 
     private final IHospitalzationService hospitalizationService;
+    private final AuthService authService;
 
     @GetMapping("/{id}")
     public ResponseEntity<Page<HospitalizationResponseDto>> getHospitalizationById
@@ -30,7 +33,8 @@ public class HospitalizationController {
 
     @PostMapping
     public ResponseEntity<HospitalizationResponseDto> createHospitalization(@Valid @RequestBody CreateHospitalizationDto createHospitalizationDto) {
-        HospitalizationResponseDto response = hospitalizationService.createHospitalization(createHospitalizationDto);
+        User user = authService.getAuthenticatedUser();
+        HospitalizationResponseDto response = hospitalizationService.createHospitalization(user, createHospitalizationDto);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

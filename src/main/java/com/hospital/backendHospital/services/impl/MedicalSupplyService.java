@@ -30,9 +30,11 @@ public class MedicalSupplyService implements IMedicalSupplyService {
     public Page<MedicalSupplyResponseDto> filterMedicalSupply(MedicalSupplyFilterRequest filter, Pageable pageable) {
         Specification<MedicalSupply> spec= Specification.where(null);
 
-        if (filter.getName() != null){
-            spec.and((root, query, cb) ->
-                    cb.like(root.get("name"), filter.getName()));
+        // Busqueda parcial sin distinguir mayusculas; spec se reasigna porque Specification es inmutable
+        if (filter.getName() != null && !filter.getName().isBlank()){
+            String pattern = "%" + filter.getName().trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) ->
+                    cb.like(cb.lower(root.get("name")), pattern));
         }
 
         return medicalSupplyRepository.findAll(spec, pageable)
