@@ -687,8 +687,16 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 - Token expirado debe responder 401.
 - Un access token usado como refresh debe responder 401.
 
-### Fase 2 — Bugs funcionales críticos (1–2 días)
+### Fase 2 — Bugs funcionales críticos (1–2 días) — ✅ COMPLETADA (08/11/2026)
 **Hallazgos:** C1, C2, C3, C4, C5, C6.
+
+> **Decisiones y ajustes al implementarla:**
+> - C1: `doctorId` es obligatorio cuando hospitaliza un ADMIN o un RECEPCIONISTA. Si hospitaliza un DOCTOR y no lo indica, queda él mismo como responsable. El doctor debe estar activo.
+> - C4: si un doctor intenta completar la cita de otro, ahora responde **403** (antes era un 400 con el mensaje "Error cancelling appointment").
+> - C6: si el paciente ya tiene una cita a esa hora (con cualquier doctor), responde 400 con su propio mensaje. Las citas canceladas no bloquean el horario.
+> - Pruebas: `AbstractClinicalIntegrationTest` crea datos reales (especialidad, doctor con horario, paciente, sala, citas, hospitalizaciones). Hay cuatro clases nuevas en `flows/`: `HospitalizationIT`, `SearchFiltersIT`, `AppointmentIT` y `MedicalRecordIT`. Corridas contra el código anterior, 14 de las 17 pruebas nuevas fallan; las otras 3 protegen comportamientos que ya funcionaban.
+>
+> **Sin cambios (siguen pendientes en su fase):** `costPerDay` se pide pero no se guarda (A6, Fase 4); `GET /hospitalizations/{id}` sigue ejecutando el filtro e ignora el id (M9, Fase 6); filtrar citas por `status` sigue fallando porque el estado se guarda como número (A1, Fase 3).
 1. Hospitalización: agregar `doctorId` al DTO, buscar el doctor y validarlo (C1).
 2. Reasignar `spec = spec.and(...)` en Hospitalization y MedicalSupply, y corregir el `like` (C2).
 3. Filtros: cambiar `"isActive"` → `"active"` e implementar `hospitalized` con una subquery `EXISTS` (C3).
