@@ -8,6 +8,7 @@ import com.hospital.backendHospital.models.dto.patient.PatientResponseDto;
 import com.hospital.backendHospital.models.dto.patient.PatientSummaryDto;
 import com.hospital.backendHospital.models.dto.patient.UpdatePatientDto;
 import com.hospital.backendHospital.models.entity.Appointment;
+import com.hospital.backendHospital.models.entity.Hospitalization;
 import com.hospital.backendHospital.models.entity.Patient;
 import com.hospital.backendHospital.models.entity.User;
 import com.hospital.backendHospital.models.filters.PatientFilterRequest;
@@ -15,6 +16,8 @@ import com.hospital.backendHospital.repositories.PatientRepository;
 import com.hospital.backendHospital.repositories.UserRepository;
 import com.hospital.backendHospital.services.IPatientService;
 import com.hospital.backendHospital.auth.service.TokenService;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -48,7 +51,7 @@ public class PatientService implements IPatientService {
 
         if (filter.getStatus() != null){
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("isActive"), filter.getStatus()));
+                    cb.equal(root.get("active"), filter.getStatus()));
         }
 
         if (filter.getRegisterDate() != null){
@@ -56,9 +59,19 @@ public class PatientService implements IPatientService {
                     cb.equal(root.get("registerDate"), filter.getRegisterDate()));
         }
 
+        // "Hospitalizado" no es un campo del paciente: es tener una hospitalizacion activa
         if (filter.getHospitalized() != null){
-            spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("hospitalized"), filter.getHospitalized()));
+            spec = spec.and((root, query, cb) -> {
+                Subquery<Long> activeHospitalization = query.subquery(Long.class);
+                Root<Hospitalization> hospitalization = activeHospitalization.from(Hospitalization.class);
+                activeHospitalization.select(hospitalization.get("id"))
+                        .where(cb.equal(hospitalization.get("patient"), root),
+                                cb.isTrue(hospitalization.get("active")));
+
+                return filter.getHospitalized()
+                        ? cb.exists(activeHospitalization)
+                        : cb.not(cb.exists(activeHospitalization));
+            });
         }
 
         return patientRepository.findAll(spec, pageable)

@@ -144,6 +144,43 @@ class AppointmentServiceTest {
         assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.CANCELLED);
     }
 
+    // ---- Completar (C4) ----
+
+    private static Appointment todayAppointmentWithDoctor(User doctorUser) {
+        return Appointment.builder()
+                .id(11L)
+                // doctor.id (30) distinto de user.id (6): antes se comparaban entre si
+                .doctor(Doctor.builder().id(30L).user(doctorUser).build())
+                .date(LocalDate.now())
+                .status(AppointmentStatus.PENDING)
+                .build();
+    }
+
+    @Test
+    void doctorCompletesOwnAppointmentEvenWhenDoctorIdDiffersFromUserId() {
+        User doctorUser = userWithRole(6L, RoleEnum.DOCTOR);
+        Appointment appointment = todayAppointmentWithDoctor(doctorUser);
+        when(appointmentRepository.findById(11L)).thenReturn(Optional.of(appointment));
+
+        appointmentService.completeAppointment(doctorUser, 11L);
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.COMPLETED);
+        verify(appointmentRepository).save(appointment);
+    }
+
+    @Test
+    void doctorCannotCompleteAnotherDoctorsAppointment() {
+        Appointment appointment = todayAppointmentWithDoctor(userWithRole(6L, RoleEnum.DOCTOR));
+        // Su user.id coincide con el doctor.id de la cita: con el bug anterior podia completarla
+        User otherDoctor = userWithRole(30L, RoleEnum.DOCTOR);
+        when(appointmentRepository.findById(11L)).thenReturn(Optional.of(appointment));
+
+        assertThrows(AccessDeniedException.class, () -> appointmentService.completeAppointment(otherDoctor, 11L));
+
+        assertThat(appointment.getStatus()).isEqualTo(AppointmentStatus.PENDING);
+        verify(appointmentRepository, never()).save(any());
+    }
+
     // ---- Listar ----
 
     @Test

@@ -30,7 +30,7 @@ public class MedicalRecordController {
     @GetMapping("/patients/me")
     public ResponseEntity<MedicalRecordResponseDto> listMedicalRecord(){
         User user = authService.getAuthenticatedUser();
-        MedicalRecordResponseDto medicalRecords = medicalRecordService.listMedicalRecordByPatientId(user.getId());
+        MedicalRecordResponseDto medicalRecords = medicalRecordService.getMedicalRecordOfPatientUser(user);
         return ResponseEntity.ok(medicalRecords);
     }
 

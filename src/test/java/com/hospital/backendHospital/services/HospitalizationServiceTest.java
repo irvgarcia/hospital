@@ -8,8 +8,12 @@ import com.hospital.backendHospital.models.dto.hospitalization.HospitalizationRe
 import com.hospital.backendHospital.models.entity.Doctor;
 import com.hospital.backendHospital.models.entity.Hospitalization;
 import com.hospital.backendHospital.models.entity.Patient;
+import com.hospital.backendHospital.models.entity.Role;
+import com.hospital.backendHospital.models.entity.RoleEnum;
 import com.hospital.backendHospital.models.entity.Room;
+import com.hospital.backendHospital.models.entity.User;
 import com.hospital.backendHospital.models.filters.HospitalizationFilterRequest;
+import com.hospital.backendHospital.repositories.DoctorRepository;
 import com.hospital.backendHospital.repositories.HospitalizationRepository;
 import com.hospital.backendHospital.repositories.PatientRepository;
 import com.hospital.backendHospital.repositories.RoomRepository;
@@ -31,10 +35,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -45,6 +51,7 @@ public class HospitalizationServiceTest {
     @Mock private HospitalizationMapper hospitalizationMapper;
     @Mock private PatientRepository patientRepository;
     @Mock private RoomRepository roomRepository;
+    @Mock private DoctorRepository doctorRepository;
 
     @InjectMocks
     private HospitalizationService hospitalizationService;
@@ -54,6 +61,15 @@ public class HospitalizationServiceTest {
     private HospitalizationResponseDto responseDto;
     private Patient patient;
     private Room room;
+    private Doctor doctor;
+    private User receptionist;
+
+    private static User userWithRole(long id, RoleEnum roleEnum) {
+        return User.builder()
+                .id(id)
+                .roles(Set.of(Role.builder().roleEnum(roleEnum).build()))
+                .build();
+    }
 
     @BeforeEach
     void setUp() {
@@ -65,8 +81,15 @@ public class HospitalizationServiceTest {
                 .id(1L)
                 .build();
 
+        doctor = Doctor.builder()
+                .id(1L)
+                .build();
+
+        receptionist = userWithRole(10L, RoleEnum.RECEPTIONIST);
+
         createDto = CreateHospitalizationDto.builder()
                 .patientId(patient.getId())
+                .doctorId(doctor.getId())
                 .roomId(room.getId())
                 .reason("no reason")
                 .costPerDay(BigDecimal.valueOf(300))
@@ -142,6 +165,7 @@ public class HospitalizationServiceTest {
     void testCreateHospitalization() {
         when(patientRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
         when(roomRepository.findById(room.getId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
         when(hospitalizationRepository.existsByPatientAndActiveTrue(patient)).thenReturn(false);
         when(roomRepository.save(room)).thenReturn(room);
         ArgumentCaptor<Hospitalization> hospitalizationCaptor = ArgumentCaptor.forClass(Hospitalization.class);
@@ -149,7 +173,7 @@ public class HospitalizationServiceTest {
         when(hospitalizationRepository.save(any(Hospitalization.class))).thenReturn(hospitalization);
         when(hospitalizationMapper.toDto(any(Hospitalization.class))).thenReturn(responseDto);
 
-        HospitalizationResponseDto result = hospitalizationService.createHospitalization(createDto);
+        HospitalizationResponseDto result = hospitalizationService.createHospitalization(receptionist, createDto);
 
         // Verifica que se guardó el Hospitalization
         verify(hospitalizationRepository).save(hospitalizationCaptor.capture());
@@ -157,6 +181,7 @@ public class HospitalizationServiceTest {
 
         // Verifica los datos del objeto guardado
         assertEquals(patient, savedHospitalization.getPatient());
+        assertEquals(doctor, savedHospitalization.getDoctor());
         assertEquals(room, savedHospitalization.getRoom());
         assertEquals("no reason", savedHospitalization.getReason());
         assertNotNull(savedHospitalization.getAdmissionDate());
@@ -168,9 +193,65 @@ public class HospitalizationServiceTest {
     void testCreateHospitalization_ShouldThrowEntityNotFoundPatient() {
         when(patientRepository.findById(createDto.getPatientId())).thenReturn(Optional.empty());
 
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, ()-> hospitalizationService.createHospitalization(createDto));
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
 
         assertEquals("Patient not found", exception.getMessage());
+    }
+
+    @Test
+    void testCreateHospitalization_DoctorWithoutDoctorIdIsAssignedToThemselves() {
+        User doctorUser = userWithRole(20L, RoleEnum.DOCTOR);
+        createDto.setDoctorId(null);
+
+        when(patientRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
+        when(roomRepository.findById(room.getId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findByUser(doctorUser)).thenReturn(Optional.of(doctor));
+        when(hospitalizationRepository.existsByPatientAndActiveTrue(patient)).thenReturn(false);
+        ArgumentCaptor<Hospitalization> hospitalizationCaptor = ArgumentCaptor.forClass(Hospitalization.class);
+
+        hospitalizationService.createHospitalization(doctorUser, createDto);
+
+        verify(hospitalizationRepository).save(hospitalizationCaptor.capture());
+        assertEquals(doctor, hospitalizationCaptor.getValue().getDoctor());
+        verify(doctorRepository, never()).findById(any());
+    }
+
+    @Test
+    void testCreateHospitalization_ShouldRequireDoctorForReceptionist() {
+        createDto.setDoctorId(null);
+
+        when(patientRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
+        when(roomRepository.findById(room.getId())).thenReturn(Optional.of(room));
+
+        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
+
+        assertEquals("Doctor is required", exception.getMessage());
+        verify(hospitalizationRepository, never()).save(any());
+    }
+
+    @Test
+    void testCreateHospitalization_ShouldThrowEntityNotFoundDoctor() {
+        when(patientRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
+        when(roomRepository.findById(room.getId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.empty());
+
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
+
+        assertEquals("Doctor not found with id 1", exception.getMessage());
+    }
+
+    @Test
+    void testCreateHospitalization_ShouldRejectInactiveDoctor() {
+        doctor.setActive(false);
+
+        when(patientRepository.findById(patient.getId())).thenReturn(Optional.of(patient));
+        when(roomRepository.findById(room.getId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
+
+        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
+
+        assertEquals("Doctor is inactive", exception.getMessage());
+        verify(hospitalizationRepository, never()).save(any());
     }
 
     @Test
@@ -178,7 +259,7 @@ public class HospitalizationServiceTest {
         when(patientRepository.findById(createDto.getPatientId())).thenReturn(Optional.of(patient));
         when(roomRepository.findById(createDto.getRoomId())).thenReturn(Optional.empty());
 
-        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, ()-> hospitalizationService.createHospitalization(createDto));
+        EntityNotFoundException exception = assertThrows(EntityNotFoundException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
 
         assertEquals("Room not found", exception.getMessage());
     }
@@ -187,9 +268,10 @@ public class HospitalizationServiceTest {
     void testCreateHospitalization_ShouldThrowInvalidDataIsHospitalized() {
         when(patientRepository.findById(createDto.getPatientId())).thenReturn(Optional.of(patient));
         when(roomRepository.findById(createDto.getRoomId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
         when(hospitalizationRepository.existsByPatientAndActiveTrue(patient)).thenReturn(true);
 
-        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(createDto));
+        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
 
         assertEquals("Patient is already hospitalized", exception.getMessage());
     }
@@ -200,10 +282,11 @@ public class HospitalizationServiceTest {
 
         when(patientRepository.findById(createDto.getPatientId())).thenReturn(Optional.of(patient));
         when(roomRepository.findById(createDto.getRoomId())).thenReturn(Optional.of(room));
+        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
         when(hospitalizationRepository.existsByPatientAndActiveTrue(patient)).thenReturn(false);
 
 
-        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(createDto));
+        InvalidDataException exception = assertThrows(InvalidDataException.class, ()-> hospitalizationService.createHospitalization(receptionist, createDto));
 
         assertEquals("Room isnt available", exception.getMessage());
     }

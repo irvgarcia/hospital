@@ -19,6 +19,9 @@ public class CreateHospitalizationDto {
     @NotNull(message = "Patient is required")
     private Long patientId;
 
+    /** Doctor responsable. Obligatorio para ADMIN y RECEPTIONIST; si lo omite un DOCTOR, queda asignado el mismo. */
+    private Long doctorId;
+
     @NotNull(message = "Room is required")
     private Long roomId;
 

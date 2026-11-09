@@ -69,7 +69,7 @@ public class DoctorService implements IDoctorService {
 
         if (filter.getStatus() != null) {
             spec = spec.and((root, query, cb) ->
-                    cb.equal(root.get("isActive"), filter.getStatus()));
+                    cb.equal(root.get("active"), filter.getStatus()));
         }
 
         if (filter.getRegisterDate() != null) {
