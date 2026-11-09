@@ -106,8 +106,12 @@ public class AppointmentService implements IAppointmentService {
             throw new InvalidDataException("Cannot create appointments in the past");
         }
 
-        if (appointmentRepository.existsOverlappingAppointment(createAppointmentDto.getDate(), createAppointmentDto.getStartTime(), createAppointmentDto.getEndTime())){
+        if (appointmentRepository.existsOverlappingAppointmentForDoctor(doctor.getId(), createAppointmentDto.getDate(), createAppointmentDto.getStartTime(), createAppointmentDto.getEndTime())){
             throw new InvalidDataException("Doctor " + doctor.getUser().getFirstName() + " already has an appointment for that time and day");
+        }
+
+        if (appointmentRepository.existsOverlappingAppointmentForPatient(patient.getId(), createAppointmentDto.getDate(), createAppointmentDto.getStartTime(), createAppointmentDto.getEndTime())){
+            throw new InvalidDataException("The patient already has an appointment for that time and day");
         }
 
         if (!doctor.isActive()){
@@ -161,8 +165,9 @@ public class AppointmentService implements IAppointmentService {
     public void completeAppointment(User user, Long id) {
         Appointment appointment = appointmentRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("Appointment not found with id "+ id));
 
-        if (!appointment.getDoctor().getId().equals(user.getId())){
-            throw new InvalidDataException("Error cancelling appointment");
+        // Se compara contra el usuario del doctor: doctor.id (tabla doctors) y user.id (tabla users) son ids distintos
+        if (!appointment.getDoctor().getUser().getId().equals(user.getId())){
+            throw new AccessDeniedException("You can only complete your own appointments");
         }
 
         if (appointment.getStatus().equals(AppointmentStatus.COMPLETED) || appointment.getStatus().equals(AppointmentStatus.CANCELLED)){
