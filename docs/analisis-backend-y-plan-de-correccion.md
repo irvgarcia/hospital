@@ -706,8 +706,36 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 
 **Pruebas:** una prueba de integración (`*IT`, extendiendo `AbstractIntegrationTest`, contra MySQL en Testcontainers) por cada caso. Los mocks no detectaron ninguno de estos bugs.
 
-### Fase 3 — Modelo de datos e integridad (2–3 días)
+### Fase 3 — Modelo de datos e integridad (2–3 días) — ✅ COMPLETADA (15/11/2026)
 **Hallazgos:** A1, A5 (`@Builder.Default`), A8, A15, A16, M12.
+
+> **Decisiones y ajustes al implementarla:**
+> - M12: `V1__baseline.sql` sale de un `mysqldump --no-data` sobre una base nueva creada por Hibernate con las entidades anteriores a esta fase. Incluye los permisos y roles que crea `BackendHospitalApplication` (el `CommandLineRunner` se mantiene, es idempotente y crea el admin). `ddl-auto=validate` queda en `application.properties` para todos los perfiles. `local` y `prod` usan `baseline-on-migrate`: una base que ya existía se marca como versión 1 y recibe de la V2 en adelante.
+> - **Antes del primer despliegue en prod:** comparar su esquema con `V1__baseline.sql` y buscar citas duplicadas (mismo doctor, fecha y hora de inicio, no canceladas). La V3 falla si las hay.
+> - A1 (`V2`): convierte los ordinales (`AppointmentStatus`: 0 CANCELLED, 1 PENDING, 2 COMPLETED; `DayOfWeek`: 0 MONDAY … 6 SUNDAY). El `CHECK` que creaba Hibernate se busca por nombre en `information_schema`, porque en bases creadas por `update` el nombre puede variar.
+> - A8 (`V3`): la restricción única no es `(doctor_id, date, start_time)` a secas, porque entonces no se podría volver a reservar un horario cancelado (contradice la regla de C6). Es un índice funcional que vale `NULL` para las citas canceladas. Solo cubre citas que *empiezan* a la misma hora; los solapamientos parciales los sigue validando el servicio.
+> - A8: `version` es `NOT NULL DEFAULT 0`. Los conflictos (`OptimisticLockingFailureException`, `DataIntegrityViolationException`) responden 409 con el formato actual `{error, detalle}` y sin el mensaje de MySQL (que va al log). En la Fase 5 pasan a `ProblemDetail`.
+> - A16: `equals` por id (`other.getId()`, para que funcione con proxies de Hibernate) y `hashCode` constante por clase. También se aplicó a `User` y `Token`, que ya usaban `@Getter/@Setter` pero tenían la igualdad por referencia.
+> - Datos de prueba: `db/dev-data/V3_1__datos_desarrollo.sql`. La versión 3.1 va justo después de la V3, así las migraciones futuras (V4…) siguen en orden. Si el esquema cambia, se agrega `V<n>_1__...` en la misma carpeta. Las fechas son relativas al día en que se carga (las citas pendientes siempre quedan en el futuro). Una base local que ya tenía datos recibe también estos datos; para empezar limpio: `docker compose down -v && docker compose up -d`.
+> - Pruebas: `DataIntegrityIT` (Flyway sin datos de desarrollo, enums como texto, filtro de citas por `status`, índice único, bloqueo optimista) y `GlobalExceptionHandlerTest` (409 sin detalles de la base).
+>
+> **Usuarios de prueba (perfil `local`).** Todos usan la contraseña `Hospital-dev-123`:
+>
+> | Rol | Email | Notas |
+> |---|---|---|
+> | ADMIN | `admin@demo.local` | |
+> | RECEPTIONIST | `recepcion@demo.local`, `recepcion2@demo.local` | |
+> | DOCTOR | `dra.lopez@demo.local` | Cardiología, L–V 08:00–14:00 |
+> | DOCTOR | `dr.ramirez@demo.local` | Medicina General, L–V 08:00–14:00, hospitalizaciones a su cargo |
+> | DOCTOR | `dra.torres@demo.local` | Pediatría, L/X/V 15:00–20:00 |
+> | DOCTOR | `dr.mendez@demo.local` | Dermatología, **inactivo** (el login responde 403) |
+> | PATIENT | `ana.garcia@demo.local` | Cita pendiente, una completada e historial clínico |
+> | PATIENT | `luis.hernandez@demo.local` | Cita pendiente, una completada y una hospitalización con alta |
+> | PATIENT | `sofia.martinez@demo.local` | Cita pendiente con pediatría y una cancelada |
+> | PATIENT | `jorge.ruiz@demo.local` | Hospitalizado (activo), sin cita pendiente |
+>
+> También hay 3 salas, 5 insumos (uno por debajo del mínimo y uno inactivo) y movimientos de inventario.
+
 1. Introducir Flyway: generar `V1__baseline.sql` desde el esquema actual y poner `ddl-auto=validate` (M12).
 2. `@Enumerated(STRING)` en `Appointment.status` y `DoctorSchedule.dayOfWeek`, con la migración `V2` que convierte los ordinales (A1).
 3. Cambiar `@Data` por `@Getter/@Setter` con `equals/hashCode` basados en el id en todas las entidades (A16).
@@ -771,7 +799,7 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 
 - [ ] `./mvnw test` (unitarias) en verde sin Docker.
 - [ ] `./mvnw verify` (unitarias + integración con Testcontainers) en verde con Docker, sin MySQL instalado localmente.
-- [ ] Las migraciones de Flyway se ejecutan y validan contra el MySQL del contenedor en cada `verify`.
+- [x] Las migraciones de Flyway se ejecutan y validan contra el MySQL del contenedor en cada `verify`.
 - [ ] `docker compose up -d` levanta la base de datos de desarrollo y la aplicación arranca contra ella.
 - [ ] Pruebas de seguridad por rol cubren el 100 % de los endpoints.
 - [ ] Flujo completo probado de punta a punta:
@@ -782,4 +810,4 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
   - [ ] Generar el PDF del expediente.
 - [ ] Ningún endpoint responde 500 ante entradas inválidas.
 - [ ] Sin secretos en el repo y con el secreto JWT rotado.
-- [ ] El esquema lo maneja Flyway y `ddl-auto=validate`.
+- [x] El esquema lo maneja Flyway y `ddl-auto=validate`.
