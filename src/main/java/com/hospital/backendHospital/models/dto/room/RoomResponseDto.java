@@ -10,10 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class RoomResponseDto {
-
+    private Long id;
     private String name;
-
     private int capacity;
-
+    private int occupiedBeds;
     private boolean available;
 }

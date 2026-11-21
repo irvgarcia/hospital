@@ -1,4 +1,4 @@
-package com.hospital.backendHospital.models.dto.recepcionist;
+package com.hospital.backendHospital.models.dto.receptionist;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,14 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class ReceptionistResponseDto {
-
     private Long id;
-
     private String email;
-
     private String firstName;
-
     private String lastName;
-
     private boolean active;
 }

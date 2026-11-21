@@ -3,16 +3,13 @@ package com.hospital.backendHospital.services;
 import com.hospital.backendHospital.models.dto.supplyMovement.CreateSupplyMovementDto;
 import com.hospital.backendHospital.models.dto.supplyMovement.SupplyMovementResponseDto;
 import com.hospital.backendHospital.models.entity.User;
+import com.hospital.backendHospital.models.filters.SupplyMovementFilterRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
-
 public interface ISupplyMovementService {
 
-    Page<SupplyMovementResponseDto> getMovements(Pageable pageable);
+    Page<SupplyMovementResponseDto> getMovements(SupplyMovementFilterRequest filter, Pageable pageable);
 
-    SupplyMovementResponseDto registerEntry(User user, CreateSupplyMovementDto CreateSupplyMovementDto);
-
-    SupplyMovementResponseDto registerExit(User user, CreateSupplyMovementDto CreateSupplyMovementDto);
+    SupplyMovementResponseDto registerMovement(User user, CreateSupplyMovementDto createSupplyMovementDto);
 }

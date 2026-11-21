@@ -1,8 +1,8 @@
 package com.hospital.backendHospital.controllers;
 
-import com.hospital.backendHospital.models.dto.recepcionist.CreateReceptionistDto;
-import com.hospital.backendHospital.models.dto.recepcionist.ReceptionistResponseDto;
-import com.hospital.backendHospital.models.dto.recepcionist.UpdateReceptionistDto;
+import com.hospital.backendHospital.models.dto.receptionist.CreateReceptionistDto;
+import com.hospital.backendHospital.models.dto.receptionist.ReceptionistResponseDto;
+import com.hospital.backendHospital.models.dto.receptionist.UpdateReceptionistDto;
 import com.hospital.backendHospital.services.IReceptionistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,31 +20,34 @@ public class ReceptionistController {
     private final IReceptionistService receptionistService;
 
     @GetMapping
-    public ResponseEntity<List<ReceptionistResponseDto>> getReceptionists(){
-        List<ReceptionistResponseDto> receptionists = receptionistService.getReceptionists();
-
-        return ResponseEntity.ok(receptionists);
+    public List<ReceptionistResponseDto> getReceptionists() {
+        return receptionistService.getReceptionists();
     }
 
-    @PostMapping("/create")
-    public ResponseEntity<ReceptionistResponseDto> createReceptionist(@Valid @RequestBody CreateReceptionistDto createReceptionistDto){
-        ReceptionistResponseDto receptionist = receptionistService.createReceptionist(createReceptionistDto);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(receptionist);
-
+    @GetMapping("/{id}")
+    public ReceptionistResponseDto getReceptionist(@PathVariable Long id) {
+        return receptionistService.getReceptionist(id);
     }
 
-    @PatchMapping("/{id}/update")
-    public ResponseEntity<ReceptionistResponseDto> updateReceptionist(@PathVariable Long id, @Valid @RequestBody UpdateReceptionistDto updateReceptionistDto){
-        ReceptionistResponseDto receptionist = receptionistService.updateReceptionist(id, updateReceptionistDto);
+    @PostMapping
+    public ResponseEntity<ReceptionistResponseDto> createReceptionist(@Valid @RequestBody CreateReceptionistDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(receptionistService.createReceptionist(dto));
+    }
 
-        return ResponseEntity.ok(receptionist);
+    @PatchMapping("/{id}")
+    public ReceptionistResponseDto updateReceptionist(@PathVariable Long id, @Valid @RequestBody UpdateReceptionistDto dto) {
+        return receptionistService.updateReceptionist(id, dto);
     }
 
     @PatchMapping("/{id}/deactivate")
-    public ResponseEntity<Void> deactivateReceptionist(Long id){
+    public ResponseEntity<Void> deactivateReceptionist(@PathVariable Long id) {
         receptionistService.deactivateReceptionist(id);
+        return ResponseEntity.noContent().build();
+    }
 
+    @PatchMapping("/{id}/activate")
+    public ResponseEntity<Void> activateReceptionist(@PathVariable Long id) {
+        receptionistService.activateReceptionist(id);
         return ResponseEntity.noContent().build();
     }
 }

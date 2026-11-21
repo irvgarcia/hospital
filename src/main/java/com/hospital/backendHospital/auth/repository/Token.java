@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 /**
  * Token emitido a un usuario (access o refresh).
  * No se guarda el JWT en claro sino su hash SHA-256: cabe en un indice unico de largo fijo
@@ -40,6 +42,10 @@ public class Token {
 
     @Column(nullable = false)
     private Boolean expired;
+
+    /** Vencimiento del JWT: la limpieza programada (B7) borra los tokens vencidos o revocados. */
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)

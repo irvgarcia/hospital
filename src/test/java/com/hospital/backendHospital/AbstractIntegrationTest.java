@@ -58,7 +58,7 @@ public abstract class AbstractIntegrationTest {
                 .build());
     }
 
-    /** Hace login y devuelve la respuesta completa ({accesToken, refreshToken}). */
+    /** Hace login y devuelve la respuesta completa ({accessToken, refreshToken}). */
     protected JsonNode login(String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,7 +71,7 @@ public abstract class AbstractIntegrationTest {
     }
 
     protected String accessToken(String email) throws Exception {
-        return login(email).get("accesToken").asText();
+        return login(email).get("accessToken").asText();
     }
 
     protected static String bearer(String token) {

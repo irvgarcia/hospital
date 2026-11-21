@@ -12,12 +12,15 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Builder
 public class MedicalRecordResponseDto {
-
+    private Long id;
+    private Long patientId;
     private String patientName;
-
+    private Long doctorId;
+    private String doctorName;
+    private String specialty;
+    private Long appointmentId;
     private LocalDate date;
-
     private String diagnostics;
-
     private String treatment;
+    private String notes;
 }

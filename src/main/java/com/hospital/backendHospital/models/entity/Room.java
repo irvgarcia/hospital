@@ -26,9 +26,14 @@ public class Room {
     @Column(nullable = false)
     private int capacity;
 
+    /** Hay al menos una cama libre (A6). Lo mantiene HospitalizationService al ingresar y dar de alta. */
     @Column(nullable = false)
     @Builder.Default
     private boolean available = true;
+
+    /** Camas ocupadas: hospitalizaciones activas en la sala. Lo calcula la base al leer la sala. */
+    @org.hibernate.annotations.Formula("(select count(*) from hospitalizations h where h.room_id = id and h.active = 1)")
+    private int occupiedBeds;
 
     /**
      * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.

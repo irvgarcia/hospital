@@ -48,6 +48,10 @@ public class Appointment {
     @Column(nullable = false)
     private BigDecimal total;
 
+    /** Motivo de la consulta que indica el paciente al agendar (opcional). */
+    @Column(length = 500)
+    private String reason;
+
     /**
      * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
      * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.

@@ -1,5 +1,6 @@
 package com.hospital.backendHospital.models.dto.supplyMovement;
 
+import com.hospital.backendHospital.models.entity.MovementType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
@@ -12,11 +13,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class CreateSupplyMovementDto {
-
-    @NotNull(message = "Supply is required")
+    @NotNull(message = "El insumo es obligatorio")
     private Long supplyId;
 
-    @NotNull(message = "Quantity changed is required")
-    @Positive(message = "Quantity changed must be valid")
-    private int quantityChanged;
+    @NotNull(message = "El tipo de movimiento es obligatorio (IN u OUT)")
+    private MovementType type;
+
+    @NotNull(message = "La cantidad es obligatoria")
+    @Positive(message = "La cantidad debe ser positiva")
+    private Integer quantity;
 }

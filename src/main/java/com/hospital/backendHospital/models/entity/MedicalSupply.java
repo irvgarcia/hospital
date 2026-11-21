@@ -33,7 +33,7 @@ public class MedicalSupply {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private UnityEnum unity;
+    private Unit unit;
 
     @Column(nullable = false)
     @Builder.Default

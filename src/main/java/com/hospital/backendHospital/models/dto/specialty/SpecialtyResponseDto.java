@@ -12,16 +12,11 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @Builder
 public class SpecialtyResponseDto {
-
-    private Integer id;
-
+    private Long id;
     private String name;
-
     private String description;
-
     private BigDecimal cost;
-
+    /** Doctores activos de la especialidad. */
     private int doctorCount;
-
     private boolean active;
 }

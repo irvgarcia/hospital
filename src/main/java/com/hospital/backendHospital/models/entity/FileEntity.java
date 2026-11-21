@@ -4,11 +4,16 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Archivo guardado en la base (M6). Pertenece a un paciente (estudios, recetas, expedientes) y guarda quien lo subio.
+ * El listado usa una proyeccion sin "data" para no cargar el contenido de todos los archivos.
+ */
 @Entity
 @Getter
 @Setter
@@ -26,13 +31,24 @@ public class FileEntity {
 
     private String type;
 
+    @Column(nullable = false)
+    private long size;
+
+    @Column(name = "uploaded_at")
+    private LocalDateTime uploadedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_id")
+    private Patient patient;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "uploaded_by")
+    private User uploadedBy;
+
     @Lob
+    @Column(columnDefinition = "LONGBLOB")
     private byte[] data;
 
-    /**
-     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
-     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
-     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -40,7 +56,6 @@ public class FileEntity {
         return id != null && id.equals(other.getId());
     }
 
-    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
     @Override
     public int hashCode() {
         return FileEntity.class.hashCode();

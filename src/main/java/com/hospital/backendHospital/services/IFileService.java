@@ -1,21 +1,20 @@
 package com.hospital.backendHospital.services;
 
-import com.hospital.backendHospital.models.dto.fileEntity.FileResponseDto;
+import com.hospital.backendHospital.models.dto.file.FileResponseDto;
 import com.hospital.backendHospital.models.entity.FileEntity;
-import jakarta.servlet.http.HttpServletResponse;
+import com.hospital.backendHospital.models.entity.User;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface IFileService {
 
-    FileEntity store(MultipartFile file) throws IOException;
+    List<FileResponseDto> listFiles(User user, Long patientId);
 
-    Optional<FileEntity> getFile(UUID id) throws FileNotFoundException;
+    FileResponseDto store(User user, MultipartFile file, Long patientId);
 
-    List<FileResponseDto> getAllFiles();
+    FileEntity getFile(User user, UUID id);
+
+    void deleteFile(User user, UUID id);
 }

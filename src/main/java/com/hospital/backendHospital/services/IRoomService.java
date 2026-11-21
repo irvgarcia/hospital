@@ -2,14 +2,17 @@ package com.hospital.backendHospital.services;
 
 import com.hospital.backendHospital.models.dto.room.CreateRoomDto;
 import com.hospital.backendHospital.models.dto.room.RoomResponseDto;
+import com.hospital.backendHospital.models.dto.room.UpdateRoomDto;
 
 import java.util.List;
 
 public interface IRoomService {
 
-    List<RoomResponseDto> listRooms();
+    List<RoomResponseDto> listRooms(Boolean available);
 
-    RoomResponseDto listRoomById(Long id);
+    RoomResponseDto getRoom(Long id);
 
     RoomResponseDto createRoom(CreateRoomDto createRoomDto);
+
+    RoomResponseDto updateRoom(Long id, UpdateRoomDto updateRoomDto);
 }

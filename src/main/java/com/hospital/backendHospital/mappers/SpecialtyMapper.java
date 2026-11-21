@@ -11,14 +11,13 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SpecialtyMapper {
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "active", ignore = true)
+    @Mapping(target = "doctorCount", ignore = true)
+    @Mapping(target = "doctor", ignore = true)
     Specialty toEntity(CreateSpecialtyDto createSpecialtyDto);
 
-    @Mapping(target = "doctorCount", expression = "java(countDoctors(specialty))")
     SpecialtyResponseDto toResponseDto(Specialty specialty);
 
     List<SpecialtyResponseDto> toListDtos(List<Specialty> specialties);
-
-    default int countDoctors(Specialty specialty) {
-        return specialty.getDoctor() != null ? specialty.getDoctor().size() : 0;
-    }
 }

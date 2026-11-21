@@ -22,18 +22,20 @@ class MedicalRecordIT extends AbstractClinicalIntegrationTest {
         // El bug usaba user.id como patient.id: aqui son distintos
         assertThat(me.getId()).isNotEqualTo(me.getUser().getId());
 
-        mockMvc.perform(get("/api/v1/medicalRecords/patients/me")
+        mockMvc.perform(get("/api/v1/medical-records/me")
                         .header(HttpHeaders.AUTHORIZATION, bearer(accessToken(me.getUser().getEmail()))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.diagnostics").value("Mi diagnostico"));
+                .andExpect(jsonPath("$.content[0].diagnostics").value("Mi diagnostico"));
     }
 
     @Test
-    void patientWithoutMedicalRecordGets404() throws Exception {
+    void patientWithoutMedicalRecordGetsAnEmptyPage() throws Exception {
         Patient me = createPatient();
 
-        mockMvc.perform(get("/api/v1/medicalRecords/patients/me")
+        // M3: una lista vacia no es un error
+        mockMvc.perform(get("/api/v1/medical-records/me")
                         .header(HttpHeaders.AUTHORIZATION, bearer(accessToken(me.getUser().getEmail()))))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty());
     }
 }

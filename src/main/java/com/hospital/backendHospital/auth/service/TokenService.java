@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -25,13 +26,14 @@ public class TokenService {
     private final TokenRepository tokenRepository;
 
     @Transactional
-    public void save(User user, String jwt, TokenType type) {
+    public void save(User user, String jwt, TokenType type, LocalDateTime expiresAt) {
         tokenRepository.save(Token.builder()
                 .user(user)
                 .tokenHash(hash(jwt))
                 .tokenType(type)
                 .expired(false)
                 .revoked(false)
+                .expiresAt(expiresAt)
                 .build());
     }
 

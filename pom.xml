@@ -128,6 +128,12 @@
 			<artifactId>mysql</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Documentacion de la API: /swagger-ui.html y /v3/api-docs -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>2.8.8</version>
+		</dependency>
         <dependency>
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf</artifactId>
@@ -197,8 +203,7 @@
 						<exclude>**/mappers/**</exclude>
 						<exclude>**/config/**</exclude>
 						<exclude>**/exceptions/**</exclude>
-						<exclude>**/token/**</exclude>
-						<exclude>**/auth/repository/**</exclude>
+												<exclude>**/auth/repository/**</exclude>
 						<exclude>**/models/**/dto/**</exclude>
 					</excludes>
 				</configuration>
@@ -225,13 +230,13 @@
 						<configuration>
 							<rules>
 								<rule>
-									<!-- TODO: umbral temporal (Fase 0); subirlo hacia 0.95 conforme crezca la cobertura (Fase 7) -->
+									<!-- Fase 7: lineas cubiertas por unitarias + integracion (77 % al cerrar la fase). No bajarlo. -->
 									<element>BUNDLE</element>
 									<limits>
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.30</minimum>
+											<minimum>0.75</minimum>
 										</limit>
 									</limits>
 								</rule>

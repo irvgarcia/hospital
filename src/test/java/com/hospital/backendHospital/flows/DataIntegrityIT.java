@@ -37,7 +37,7 @@ class DataIntegrityIT extends AbstractClinicalIntegrationTest {
         Integer demoUsers = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM users WHERE email LIKE '%@demo.local'", Integer.class);
 
-        assertThat(versions).startsWith("1", "2", "3").doesNotContain("3.1");
+        assertThat(versions).startsWith("1", "2", "3", "4").doesNotContain("3.1", "4.1");
         assertThat(demoUsers).isZero();
     }
 

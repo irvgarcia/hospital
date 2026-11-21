@@ -7,11 +7,17 @@ import com.hospital.backendHospital.models.filters.HospitalizationFilterRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface IHospitalzationService {
+import java.util.List;
 
-    Page<HospitalizationResponseDto> filterHospitalization(HospitalizationFilterRequest filter, Pageable pageable);
+public interface IHospitalizationService {
+
+    Page<HospitalizationResponseDto> filterHospitalizations(HospitalizationFilterRequest filter, Pageable pageable);
+
+    List<HospitalizationResponseDto> listMine(User user);
+
+    HospitalizationResponseDto getHospitalization(Long id);
 
     HospitalizationResponseDto createHospitalization(User user, CreateHospitalizationDto createHospitalizationDto);
 
-    void dischargeDateById(Long id);
+    HospitalizationResponseDto discharge(Long id);
 }

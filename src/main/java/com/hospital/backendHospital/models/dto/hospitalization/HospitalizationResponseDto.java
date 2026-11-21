@@ -13,18 +13,17 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @Builder
 public class HospitalizationResponseDto {
-
+    private Long id;
+    private Long patientId;
     private String patientName;
-
+    private Long doctorId;
+    private String doctorName;
+    private Long roomId;
     private String roomName;
-
     private LocalDate admissionDate;
-
     private LocalDate dischargeDate;
-
     private String reason;
-
     private BigDecimal costPerDay;
-
-    private boolean isActive;
+    private BigDecimal totalCost;
+    private boolean active;
 }

@@ -43,7 +43,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("email", user.getEmail(), "password", "incorrecta"))))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("No autenticado"));
+                .andExpect(jsonPath("$.title").value("No autenticado"));
     }
 
     @Test
@@ -64,7 +64,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("email", user.getEmail(), "password", PASSWORD))))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("Usuario desactivado"));
+                .andExpect(jsonPath("$.title").value("Usuario desactivado"));
     }
 
     @Test
@@ -79,7 +79,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
     void requestWithoutTokenReturns401WithJsonBody() throws Exception {
         mockMvc.perform(get(PROTECTED_URL))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("No autenticado"));
+                .andExpect(jsonPath("$.title").value("No autenticado"));
     }
 
     @Test
@@ -99,7 +99,7 @@ class AuthenticationIT extends AbstractIntegrationTest {
                 .signWith(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
                 .compact();
         // Registrado y sin revocar: lo unico que lo invalida es la expiracion
-        tokenService.save(user, expired, TokenType.ACCESS);
+        tokenService.save(user, expired, TokenType.ACCESS, java.time.LocalDateTime.now().plusHours(1));
 
         mockMvc.perform(get(PROTECTED_URL).header(HttpHeaders.AUTHORIZATION, bearer(expired)))
                 .andExpect(status().isUnauthorized());
@@ -153,14 +153,14 @@ class AuthenticationIT extends AbstractIntegrationTest {
     void refreshIssuesNewPairAndRevokesThePreviousOne() throws Exception {
         User user = createUser(RoleEnum.PATIENT);
         JsonNode first = login(user.getEmail());
-        String oldAccess = first.get("accesToken").asText();
+        String oldAccess = first.get("accessToken").asText();
         String oldRefresh = first.get("refreshToken").asText();
 
         String body = mockMvc.perform(post("/auth/refresh-token").header(HttpHeaders.AUTHORIZATION, bearer(oldRefresh)))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         JsonNode second = objectMapper.readTree(body);
-        String newAccess = second.get("accesToken").asText();
+        String newAccess = second.get("accessToken").asText();
         String newRefresh = second.get("refreshToken").asText();
         assertThat(newRefresh).isNotEqualTo(oldRefresh);
 
@@ -177,10 +177,10 @@ class AuthenticationIT extends AbstractIntegrationTest {
     void logoutRevokesTokens() throws Exception {
         User user = createUser(RoleEnum.PATIENT);
         JsonNode tokens = login(user.getEmail());
-        String access = tokens.get("accesToken").asText();
+        String access = tokens.get("accessToken").asText();
 
         mockMvc.perform(post("/auth/logout").header(HttpHeaders.AUTHORIZATION, bearer(access)))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(get(PROTECTED_URL).header(HttpHeaders.AUTHORIZATION, bearer(access)))
                 .andExpect(status().isUnauthorized());

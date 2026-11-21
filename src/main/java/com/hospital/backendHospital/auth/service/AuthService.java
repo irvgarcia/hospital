@@ -1,8 +1,8 @@
 package com.hospital.backendHospital.auth.service;
 
 import com.hospital.backendHospital.auth.repository.Token.TokenType;
+import com.hospital.backendHospital.exceptions.ConflictException;
 import com.hospital.backendHospital.exceptions.EntityNotFoundException;
-import com.hospital.backendHospital.exceptions.InvalidDataException;
 import com.hospital.backendHospital.exceptions.InvalidTokenException;
 import com.hospital.backendHospital.models.dto.token.AuthRequest;
 import com.hospital.backendHospital.models.dto.token.TokenResponse;
@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -37,20 +38,22 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final RoleRepository roleRepository;
 
+    /** Registro publico: crea un usuario PATIENT. El perfil clinico se completa despues (POST /api/v1/patients). */
     @Transactional
     public TokenResponse register(final CreateUserDto request){
-        if (userRepository.existsByEmail(request.getEmail())){
-            throw new InvalidDataException("User already exists");
+        String email = normalize(request.getEmail());
+        if (userRepository.existsByEmail(email)){
+            throw new ConflictException("Ya existe una cuenta con el email " + email);
         }
-
-        Role patientRole = roleRepository.findByRoleEnum(RoleEnum.PATIENT).orElseThrow(()-> new EntityNotFoundException("Role not found"));
+        Role patientRole = roleRepository.findByRoleEnum(RoleEnum.PATIENT)
+                .orElseThrow(()-> new EntityNotFoundException("No existe el rol PATIENT"));
 
         final User user = User.builder()
-                .email(request.getEmail())
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
+                .email(email)
+                .firstName(request.getFirstName().trim())
+                .lastName(request.getLastName().trim())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .roles(Set.of(patientRole))
+                .roles(new HashSet<>(Set.of(patientRole)))
                 .build();
 
         return issueTokens(userRepository.save(user));
@@ -58,10 +61,11 @@ public class AuthService {
 
     @Transactional
     public TokenResponse authenticate(final AuthRequest request){
+        String email = normalize(request.getEmail());
         // Lanza BadCredentialsException (401) o DisabledException (403) si no procede
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.getPassword()));
 
-        final User user = userRepository.findByEmail(request.getEmail()).orElseThrow(()-> new UsernameNotFoundException("Email not found"));
+        final User user = userRepository.findByEmail(email).orElseThrow(()-> new UsernameNotFoundException("Email not found"));
         return issueTokens(user);
     }
 
@@ -72,19 +76,19 @@ public class AuthService {
     @Transactional
     public TokenResponse refreshToken(final String authorizationHeader) {
         if (authorizationHeader == null || !authorizationHeader.startsWith(BEARER_PREFIX)) {
-            throw new InvalidTokenException("Refresh token is required");
+            throw new InvalidTokenException("Falta el refresh token");
         }
         final String refreshToken = authorizationHeader.substring(BEARER_PREFIX.length());
 
         final String username = jwtService.extractUsername(refreshToken, TokenType.REFRESH)
-                .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
+                .orElseThrow(() -> new InvalidTokenException("Refresh token no válido"));
 
         if (!tokenService.isActive(refreshToken, TokenType.REFRESH)) {
-            throw new InvalidTokenException("Refresh token has been revoked");
+            throw new InvalidTokenException("El refresh token fue revocado");
         }
 
         final User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
+                .orElseThrow(() -> new InvalidTokenException("Refresh token no válido"));
 
         if (!user.isActive()) {
             throw new DisabledException("User is disabled");
@@ -99,8 +103,8 @@ public class AuthService {
         final String refreshToken = jwtService.generateRefreshToken(user);
 
         tokenService.revokeAllUserTokens(user);
-        tokenService.save(user, accessToken, TokenType.ACCESS);
-        tokenService.save(user, refreshToken, TokenType.REFRESH);
+        tokenService.save(user, accessToken, TokenType.ACCESS, jwtService.expiresAt(TokenType.ACCESS));
+        tokenService.save(user, refreshToken, TokenType.REFRESH, jwtService.expiresAt(TokenType.REFRESH));
 
         return new TokenResponse(accessToken, refreshToken);
     }
@@ -109,5 +113,9 @@ public class AuthService {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+    }
+
+    private static String normalize(String email) {
+        return email == null ? "" : email.trim().toLowerCase();
     }
 }

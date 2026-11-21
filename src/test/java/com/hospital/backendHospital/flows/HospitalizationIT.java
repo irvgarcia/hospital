@@ -77,7 +77,7 @@ class HospitalizationIT extends AbstractClinicalIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body(createPatient(), null, createRoom()))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalle").value("Doctor is required"));
+                .andExpect(jsonPath("$.detail").value("El doctor responsable es obligatorio"));
     }
 
     @Test
@@ -92,7 +92,7 @@ class HospitalizationIT extends AbstractClinicalIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(body(createPatient(), doctor, createRoom()))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalle").value("Doctor is inactive"));
+                .andExpect(jsonPath("$.detail").value("El doctor está inactivo"));
     }
 
     @Test
@@ -103,7 +103,6 @@ class HospitalizationIT extends AbstractClinicalIntegrationTest {
         createHospitalization(createPatient(), doctor, createRoom());
         String token = accessToken(createUser(RoleEnum.ADMIN).getEmail());
 
-        // GET /{id} ejecuta el filtro (el GET real por id llega en la Fase 6)
         JsonNode byPatient = getPage(token, "patientId", target.getId().toString());
         assertThat(byPatient.get("page").get("totalElements").asLong()).isEqualTo(1);
 
@@ -112,7 +111,7 @@ class HospitalizationIT extends AbstractClinicalIntegrationTest {
     }
 
     private JsonNode getPage(String token, String param, String value) throws Exception {
-        String json = mockMvc.perform(get("/api/v1/hospitalizations/0")
+        String json = mockMvc.perform(get("/api/v1/hospitalizations")
                         .header(HttpHeaders.AUTHORIZATION, bearer(token))
                         .param(param, value)
                         .param("size", "100"))

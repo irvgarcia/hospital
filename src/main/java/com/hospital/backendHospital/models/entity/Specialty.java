@@ -38,6 +38,10 @@ public class Specialty {
     private boolean active = true;
 
     // Sin cascade: guardar o borrar una especialidad no debe crear, modificar ni borrar sus doctores (A15)
+    /** Doctores activos de la especialidad, contados en SQL (B7: sin cargar la coleccion). */
+    @org.hibernate.annotations.Formula("(select count(*) from doctors d where d.specialty_id = id and d.active = 1)")
+    private int doctorCount;
+
     @OneToMany(mappedBy = "specialty")
     @Builder.Default
     private List<Doctor> doctor = new ArrayList<>();

@@ -2,14 +2,18 @@ package com.hospital.backendHospital.services;
 
 import com.hospital.backendHospital.models.dto.medicalRecord.CreateMedicalRecordDto;
 import com.hospital.backendHospital.models.dto.medicalRecord.MedicalRecordResponseDto;
+import com.hospital.backendHospital.models.dto.medicalRecord.UpdateMedicalRecordDto;
 import com.hospital.backendHospital.models.entity.User;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface IMedicalRecordService {
-    MedicalRecordResponseDto listMedicalRecordByPatientId(Long id);
 
-    MedicalRecordResponseDto getMedicalRecordOfPatientUser(User user);
+    Page<MedicalRecordResponseDto> listByPatient(Long patientId, Pageable pageable);
 
-    MedicalRecordResponseDto createMedicalRecord(CreateMedicalRecordDto createMedicalRecordDto);
+    Page<MedicalRecordResponseDto> listMine(User user, Pageable pageable);
+
+    MedicalRecordResponseDto createMedicalRecord(User user, CreateMedicalRecordDto createMedicalRecordDto);
+
+    MedicalRecordResponseDto updateMedicalRecord(User user, Long id, UpdateMedicalRecordDto updateMedicalRecordDto);
 }

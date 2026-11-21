@@ -1,5 +1,6 @@
 package com.hospital.backendHospital.models.dto.supplyUsage;
 
+import com.hospital.backendHospital.models.entity.Unit;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,14 +13,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class SupplyUsageResponseDto {
-
     private Long id;
-
-    private Long hospitalizaciontId;
-
-    private String supply;
-
+    private Long hospitalizationId;
+    private Long supplyId;
+    private String supplyName;
+    private Unit unit;
     private int quantityUsed;
-
     private LocalDateTime usedAt;
 }

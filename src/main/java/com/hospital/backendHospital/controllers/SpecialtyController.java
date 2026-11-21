@@ -1,7 +1,10 @@
 package com.hospital.backendHospital.controllers;
 
+import com.hospital.backendHospital.auth.service.AuthService;
 import com.hospital.backendHospital.models.dto.specialty.CreateSpecialtyDto;
 import com.hospital.backendHospital.models.dto.specialty.SpecialtyResponseDto;
+import com.hospital.backendHospital.models.dto.specialty.UpdateSpecialtyDto;
+import com.hospital.backendHospital.models.entity.RoleEnum;
 import com.hospital.backendHospital.services.ISpecialtyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,19 +20,27 @@ import java.util.List;
 public class SpecialtyController {
 
     private final ISpecialtyService specialtyService;
+    private final AuthService authService;
 
+    /** Un PACIENTE solo recibe las especialidades activas. */
     @GetMapping
-    public ResponseEntity<List<SpecialtyResponseDto>> getAllSpecialties(){
-        return ResponseEntity.ok(specialtyService.listSpecialties());
+    public List<SpecialtyResponseDto> listSpecialties(@RequestParam(required = false) Boolean active) {
+        boolean patient = authService.getAuthenticatedUser().hasRole(RoleEnum.PATIENT);
+        return specialtyService.listSpecialties(patient ? Boolean.TRUE : active);
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<SpecialtyResponseDto> getSpecialtyByName(@RequestParam String name){
-        return ResponseEntity.ok(specialtyService.listSpecialtyByName(name));
+    @GetMapping("/{id}")
+    public SpecialtyResponseDto getSpecialty(@PathVariable Long id) {
+        return specialtyService.getSpecialty(id);
     }
 
     @PostMapping
-    public ResponseEntity<SpecialtyResponseDto> createSpecialty(@Valid @RequestBody CreateSpecialtyDto createSpecialtyDto){
-        return ResponseEntity.status(HttpStatus.CREATED).body(specialtyService.createSpecialty(createSpecialtyDto));
+    public ResponseEntity<SpecialtyResponseDto> createSpecialty(@Valid @RequestBody CreateSpecialtyDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(specialtyService.createSpecialty(dto));
+    }
+
+    @PatchMapping("/{id}")
+    public SpecialtyResponseDto updateSpecialty(@PathVariable Long id, @Valid @RequestBody UpdateSpecialtyDto dto) {
+        return specialtyService.updateSpecialty(id, dto);
     }
 }
