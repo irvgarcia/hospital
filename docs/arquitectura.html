@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura Hospital</title>
+<meta name="description" content="Diagramas de la base de datos y de la arquitectura del sistema Hospital: backend, seguridad, permisos por rol y frontend.">
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1d1f23;
+    --muted: #5c6370;
+    --border: #e2e2de;
+    --accent: #0f6e6e;
+    --accent-soft: #e3f1f0;
+    --code-bg: #f0f0ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141618;
+      --surface: #1c1f22;
+      --text: #e6e6e3;
+      --muted: #9aa1ab;
+      --border: #30343a;
+      --accent: #5cc4c0;
+      --accent-soft: #1d3332;
+      --code-bg: #24282c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141618;
+    --surface: #1c1f22;
+    --text: #e6e6e3;
+    --muted: #9aa1ab;
+    --border: #30343a;
+    --accent: #5cc4c0;
+    --accent-soft: #1d3332;
+    --code-bg: #24282c;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 16px 96px;
+  }
+  h1 { font-size: 2.1rem; line-height: 1.2; margin: 0 0 12px; letter-spacing: -0.01em; }
+  h2 {
+    font-size: 1.5rem; margin: 64px 0 16px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--border); scroll-margin-top: 16px;
+  }
+  h3 { font-size: 1.15rem; margin: 40px 0 12px; scroll-margin-top: 16px; }
+  p, li { max-width: 78ch; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 40px 0; }
+  code {
+    font: 0.88em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace;
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+  }
+  pre.code {
+    background: var(--code-bg); padding: 16px; border-radius: 8px; overflow-x: auto;
+    border: 1px solid var(--border);
+  }
+  pre.code code { background: none; padding: 0; }
+
+  .table-wrap {
+    overflow-x: auto; margin: 16px 0; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--surface);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th, td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+  th { background: var(--accent-soft); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+
+  figure.diagram {
+    margin: 20px 0; padding: 20px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; overflow-x: auto;
+  }
+  pre.mermaid { margin: 0; display: flex; justify-content: center; background: none; }
+  pre.mermaid:not([data-processed]) { color: var(--muted); font-size: 0.8rem; white-space: pre; }
+
+  .theme-toggle {
+    position: fixed; top: 12px; right: 12px; z-index: 10;
+    background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 0.85rem; cursor: pointer;
+  }
+  .theme-toggle:hover { border-color: var(--accent); }
+
+  @media print {
+    .theme-toggle { display: none; }
+    figure.diagram, .table-wrap { break-inside: avoid; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+<button class="theme-toggle" type="button" id="theme-toggle">Tema</button>
+<main>
+<h1>Arquitectura del sistema Hospital</h1>
+<p>Diagramas para entender cómo está construido el sistema: la base de datos, el backend, la seguridad y el frontend.
+Los diagramas están escritos en <a href="https://mermaid.js.org/">Mermaid</a> y se dibujan al abrir este archivo en el navegador (necesita conexión a internet para cargar Mermaid). El botón <strong>Tema</strong> cambia entre modo claro y oscuro.</p>
+<p><strong>Fuente de verdad:</strong> el esquema sale de las migraciones de Flyway (<code>src/main/resources/db/migration</code>) y las reglas de acceso de <code>SecurityConfig</code>. Si cambian, hay que actualizar este documento.</p>
+<h2 id="contenido">Contenido</h2>
+<ol>
+<li><a href="#1-vista-general">Vista general</a></li>
+<li><a href="#2-base-de-datos">Base de datos</a><ul>
+<li><a href="#21-mapa-de-relaciones">Mapa de relaciones</a></li>
+<li><a href="#22-usuarios-y-seguridad">Usuarios y seguridad</a></li>
+<li><a href="#23-doctores-pacientes-citas-e-historial">Doctores, pacientes, citas e historial</a></li>
+<li><a href="#24-hospitalizaci%C3%B3n-inventario-y-archivos">Hospitalización, inventario y archivos</a></li>
+<li><a href="#25-valores-de-los-enums">Valores de los enums</a></li>
+<li><a href="#26-restricciones-e-integridad">Restricciones e integridad</a></li>
+<li><a href="#27-migraciones-de-flyway">Migraciones</a></li>
+</ul>
+</li>
+<li><a href="#3-backend">Backend</a><ul>
+<li><a href="#31-capas">Capas</a></li>
+<li><a href="#32-paquetes">Paquetes</a></li>
+<li><a href="#33-controller--service--repository">Controller → Service → Repository</a></li>
+<li><a href="#34-recorrido-de-una-petici%C3%B3n">Recorrido de una petición</a></li>
+</ul>
+</li>
+<li><a href="#4-seguridad">Seguridad</a><ul>
+<li><a href="#41-login-y-uso-del-access-token">Login y uso del access token</a></li>
+<li><a href="#42-renovaci%C3%B3n-del-token-y-logout">Renovación y logout</a></li>
+<li><a href="#43-permisos-por-rol">Permisos por rol</a></li>
+</ul>
+</li>
+<li><a href="#5-ciclos-de-vida">Ciclos de vida</a></li>
+<li><a href="#6-frontend">Frontend</a></li>
+</ol>
+<hr>
+<h2 id="1-vista-general">1. Vista general</h2>
+<figure class="diagram"><pre class="mermaid">flowchart LR
+    U(["Usuario&lt;br/&gt;paciente · doctor · recepción · admin"])
+
+    subgraph FE["Frontend · React 19 + Vite"]
+        SPA["SPA por rol&lt;br/&gt;TanStack Query"]
+    end
+
+    subgraph BE["Backend · Spring Boot 3.4 · Java 21"]
+        API["API REST&lt;br/&gt;/api/v1 · /auth"]
+        SW["Swagger UI&lt;br/&gt;/swagger-ui.html"]
+        FW["Flyway&lt;br/&gt;migraciones"]
+    end
+
+    DB[("MySQL 8&lt;br/&gt;hospitalbd")]
+
+    U --&gt;|navegador| SPA
+    SPA --&gt;|"JSON + JWT&lt;br/&gt;Authorization: Bearer"| API
+    API --&gt;|JPA / Hibernate| DB
+    FW --&gt;|crea y actualiza el esquema&lt;br/&gt;al arrancar| DB
+    U -.-&gt;|documentación| SW</pre></figure>
+<div class="table-wrap"><table><thead><tr>
+<th>Pieza</th>
+<th>Tecnología</th>
+<th>Dónde</th>
+</tr>
+</thead><tbody><tr>
+<td>Frontend</td>
+<td>React 19, TypeScript, Vite, Tailwind CSS 4, TanStack Query, React Router</td>
+<td><code>frontend/</code></td>
+</tr>
+<tr>
+<td>Backend</td>
+<td>Spring Boot 3.4 (Web, Security, Data JPA, Validation), JWT (jjwt), MapStruct, Lombok, OpenPDF</td>
+<td><code>src/main/java</code></td>
+</tr>
+<tr>
+<td>Base de datos</td>
+<td>MySQL 8, esquema manejado por Flyway (<code>ddl-auto=validate</code>)</td>
+<td><code>docker-compose.yml</code> (desarrollo)</td>
+</tr>
+<tr>
+<td>Documentación de la API</td>
+<td>springdoc / Swagger</td>
+<td><code>/swagger-ui.html</code></td>
+</tr>
+<tr>
+<td>Pruebas</td>
+<td>JUnit 5, Mockito, Testcontainers (MySQL real), JaCoCo</td>
+<td><code>src/test</code></td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="2-base-de-datos">2. Base de datos</h2>
+<h3 id="21-mapa-de-relaciones">2.1 Mapa de relaciones</h3>
+<p>Todas las tablas y cómo se conectan, sin columnas. Las secciones siguientes muestran el detalle por área.</p>
+<figure class="diagram"><pre class="mermaid">erDiagram
+    users ||--o{ user_roles : ""
+    roles ||--o{ user_roles : ""
+    roles ||--o{ role_permissions : ""
+    permissions ||--o{ role_permissions : ""
+    users ||--o{ auth_tokens : "sesiones"
+
+    users ||--o| patients : "perfil de paciente"
+    users ||--o| doctors : "perfil de doctor"
+    specialties ||--o{ doctors : "agrupa"
+    doctors ||--o{ doctor_schedules : "horario semanal"
+
+    patients ||--o{ appointments : "agenda"
+    doctors ||--o{ appointments : "atiende"
+    patients ||--o{ medical_records : "historial"
+    doctors |o--o{ medical_records : "escribe"
+    appointments |o--o| medical_records : "origina"
+
+    patients ||--o{ hospitalizations : "ingresa"
+    doctors ||--o{ hospitalizations : "responsable"
+    rooms ||--o{ hospitalizations : "aloja"
+    hospitalizations ||--o{ supply_usages : "consume"
+    medical_supplies ||--o{ supply_usages : "se usa en"
+    medical_supplies ||--o{ supply_movements : "entradas y salidas"
+    users ||--o{ supply_movements : "registra"
+
+    patients |o--o{ files : "archivos"
+    users |o--o{ files : "sube"</pre></figure>
+<p><strong>Cómo leer las relaciones:</strong> <code>||</code> = exactamente uno · <code>|o</code> = cero o uno · <code>o{</code> = cero o muchos.
+Por ejemplo, <code>users ||--o| patients</code> significa que un paciente pertenece a exactamente un usuario, y que un usuario tiene como máximo un perfil de paciente.</p>
+<p><strong>Idea central del modelo:</strong> <code>users</code> guarda los datos de acceso (email, contraseña, nombre, activo) y los roles. Paciente y doctor son <strong>perfiles</strong> en tablas propias ligados a un usuario. El recepcionista y el administrador no tienen perfil: son solo un usuario con ese rol.</p>
+<h3 id="22-usuarios-y-seguridad">2.2 Usuarios y seguridad</h3>
+<figure class="diagram"><pre class="mermaid">erDiagram
+    users {
+        BIGINT id PK
+        VARCHAR email UK "usuario de login y subject del JWT"
+        VARCHAR password "hash BCrypt"
+        VARCHAR first_name
+        VARCHAR last_name
+        BOOLEAN active "false = no puede iniciar sesión"
+    }
+    roles {
+        BIGINT id PK
+        ENUM role_enum "ADMIN | DOCTOR | PATIENT | RECEPTIONIST"
+    }
+    permissions {
+        BIGINT id PK
+        VARCHAR name UK "dato histórico: la autorización es por rol"
+    }
+    user_roles {
+        BIGINT user_id PK, FK
+        BIGINT role_id PK, FK
+    }
+    role_permissions {
+        BIGINT role_id PK, FK
+        BIGINT permission_id PK, FK
+    }
+    auth_tokens {
+        BIGINT id PK
+        BIGINT user_id FK
+        VARCHAR token_hash UK "SHA-256 del JWT, nunca el token"
+        ENUM token_type "ACCESS | REFRESH"
+        BOOLEAN revoked
+        BOOLEAN expired
+        DATETIME expires_at "TokenCleanupTask borra los vencidos"
+    }
+
+    users ||--o{ user_roles : ""
+    roles ||--o{ user_roles : ""
+    roles ||--o{ role_permissions : ""
+    permissions ||--o{ role_permissions : ""
+    users ||--o{ auth_tokens : ""</pre></figure>
+<ul>
+<li><code>user_roles</code> y <code>role_permissions</code> son tablas intermedias de relaciones muchos a muchos.</li>
+<li><code>auth_tokens</code> permite revocar tokens: un JWT con firma válida solo se acepta si su hash está aquí y no está revocado (ver <a href="#4-seguridad">Seguridad</a>).</li>
+</ul>
+<h3 id="23-doctores-pacientes-citas-e-historial">2.3 Doctores, pacientes, citas e historial</h3>
+<figure class="diagram"><pre class="mermaid">erDiagram
+    users {
+        BIGINT id PK
+        VARCHAR email UK
+    }
+    specialties {
+        BIGINT id PK
+        VARCHAR name UK
+        VARCHAR description
+        DECIMAL cost "precio de la consulta"
+        BOOLEAN active
+    }
+    doctors {
+        BIGINT id PK
+        BIGINT user_id FK, UK
+        BIGINT specialty_id FK
+        VARCHAR phone_number
+        DATE register_date
+        BOOLEAN active
+    }
+    doctor_schedules {
+        BIGINT id PK
+        BIGINT doctor_id FK
+        ENUM day_of_week "MONDAY ... SUNDAY"
+        TIME start_time
+        TIME end_time
+    }
+    patients {
+        BIGINT id PK
+        BIGINT user_id FK, UK
+        VARCHAR phone_number
+        VARCHAR address
+        DATE date_of_birth
+        ENUM gender "FEMALE | MALE | OTHER"
+        VARCHAR blood_type "O+, A-, ..."
+        DOUBLE height
+        DOUBLE weight
+        BOOLEAN smoker
+        VARCHAR allergies
+        VARCHAR chronic_diseases
+        VARCHAR current_medications
+        VARCHAR emergency_contact_name
+        VARCHAR emergency_contact_relation
+        VARCHAR emergency_contact
+        DATE register_date
+        BOOLEAN active
+    }
+    appointments {
+        BIGINT id PK
+        BIGINT patient_id FK
+        BIGINT doctor_id FK
+        DATE date
+        TIME start_time
+        TIME end_time
+        ENUM status "PENDING | COMPLETED | CANCELLED"
+        DECIMAL total "costo de la especialidad al agendar"
+        VARCHAR reason "motivo, opcional"
+    }
+    medical_records {
+        BIGINT id PK
+        BIGINT patient_id FK
+        BIGINT doctor_id FK "nulo en entradas antiguas"
+        BIGINT appointment_id FK, UK "una entrada por cita"
+        DATE date
+        VARCHAR diagnostics
+        VARCHAR treatment
+        VARCHAR notes
+    }
+
+    users ||--o| doctors : ""
+    users ||--o| patients : ""
+    specialties ||--o{ doctors : ""
+    doctors ||--o{ doctor_schedules : ""
+    patients ||--o{ appointments : ""
+    doctors ||--o{ appointments : ""
+    patients ||--o{ medical_records : ""
+    doctors |o--o{ medical_records : ""
+    appointments |o--o| medical_records : ""</pre></figure>
+<ul>
+<li><code>user_id</code> es <strong>único</strong> en <code>doctors</code> y <code>patients</code>: un usuario es como máximo un doctor o un paciente.</li>
+<li>Una entrada de <code>medical_records</code> solo se crea a partir de una cita <code>COMPLETED</code> del doctor autenticado, y solo una por cita (<code>appointment_id</code> único).</li>
+<li><code>specialties.doctorCount</code> (doctores activos) no es una columna: Hibernate lo calcula con <code>@Formula</code>.</li>
+</ul>
+<h3 id="24-hospitalización-inventario-y-archivos">2.4 Hospitalización, inventario y archivos</h3>
+<figure class="diagram"><pre class="mermaid">erDiagram
+    users {
+        BIGINT id PK
+    }
+    patients {
+        BIGINT id PK
+    }
+    doctors {
+        BIGINT id PK
+    }
+    rooms {
+        BIGINT id PK
+        VARCHAR name UK
+        INT capacity "número de camas"
+        BOOLEAN available "true = quedan camas libres"
+    }
+    hospitalizations {
+        BIGINT id PK
+        BIGINT patient_id FK
+        BIGINT doctor_id FK "doctor responsable"
+        BIGINT room_id FK
+        DATE admission_date
+        DATE discharge_date "nulo mientras sigue internado"
+        VARCHAR reason
+        BOOLEAN active "true = sigue internado"
+        DECIMAL cost_per_day
+        DECIMAL total_cost "se calcula al dar de alta"
+    }
+    medical_supplies {
+        BIGINT id PK
+        VARCHAR name UK
+        INT quantity "solo cambia con movimientos o consumos"
+        INT minimum_stock "umbral de alerta, no un límite"
+        ENUM unit "BOX | MILLIGRAM | MILLILITER | UNIT"
+        BOOLEAN active
+        BIGINT version "bloqueo optimista (@Version)"
+    }
+    supply_movements {
+        BIGINT id PK
+        BIGINT supply_id FK
+        BIGINT performed_by FK "usuario que lo registró"
+        ENUM type "IN | OUT"
+        INT quantity_changed
+        DATETIME timestamp
+    }
+    supply_usages {
+        BIGINT id PK
+        BIGINT hospitalization_id FK
+        BIGINT supply_id FK
+        INT quantity_used
+        DATETIME used_at
+    }
+    files {
+        BINARY id PK "UUID"
+        BIGINT patient_id FK
+        BIGINT uploaded_by FK
+        VARCHAR name
+        VARCHAR type "PDF, PNG, JPG, WEBP o TXT"
+        BIGINT size "bytes, máx. 5 MB"
+        DATETIME uploaded_at
+        LONGBLOB data "contenido del archivo"
+    }
+
+    patients ||--o{ hospitalizations : ""
+    doctors ||--o{ hospitalizations : ""
+    rooms ||--o{ hospitalizations : ""
+    hospitalizations ||--o{ supply_usages : ""
+    medical_supplies ||--o{ supply_usages : ""
+    medical_supplies ||--o{ supply_movements : ""
+    users ||--o{ supply_movements : ""
+    patients |o--o{ files : ""
+    users |o--o{ files : ""</pre></figure>
+<ul>
+<li>Una sala admite tantos pacientes activos como su <code>capacity</code>. <code>rooms.occupiedBeds</code> se calcula con <code>@Formula</code> (hospitalizaciones activas en la sala).</li>
+<li><code>total_cost</code> = <code>cost_per_day</code> × días internado (mínimo 1).</li>
+<li>El stock puede bajar hasta 0, nunca por debajo. Por debajo de <code>minimum_stock</code> el insumo aparece en el reporte <code>GET /medical-supplies/low-stock</code>.</li>
+<li>Los archivos se guardan dentro de la base (<code>LONGBLOB</code>). El listado lee solo los metadatos, sin cargar <code>data</code>.</li>
+</ul>
+<h3 id="25-valores-de-los-enums">2.5 Valores de los enums</h3>
+<p>Todos se guardan como <strong>texto</strong> (<code>@Enumerated(EnumType.STRING)</code>), no como número.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Columna</th>
+<th>Valores</th>
+</tr>
+</thead><tbody><tr>
+<td><code>roles.role_enum</code></td>
+<td><code>ADMIN</code>, <code>DOCTOR</code>, <code>PATIENT</code>, <code>RECEPTIONIST</code></td>
+</tr>
+<tr>
+<td><code>auth_tokens.token_type</code></td>
+<td><code>ACCESS</code>, <code>REFRESH</code></td>
+</tr>
+<tr>
+<td><code>appointments.status</code></td>
+<td><code>PENDING</code>, <code>COMPLETED</code>, <code>CANCELLED</code></td>
+</tr>
+<tr>
+<td><code>doctor_schedules.day_of_week</code></td>
+<td><code>MONDAY</code> … <code>SUNDAY</code></td>
+</tr>
+<tr>
+<td><code>patients.gender</code></td>
+<td><code>FEMALE</code>, <code>MALE</code>, <code>OTHER</code></td>
+</tr>
+<tr>
+<td><code>patients.blood_type</code></td>
+<td><code>A+</code>, <code>A-</code>, <code>B+</code>, <code>B-</code>, <code>AB+</code>, <code>AB-</code>, <code>O+</code>, <code>O-</code> (texto, con <code>BloodTypeConverter</code>)</td>
+</tr>
+<tr>
+<td><code>medical_supplies.unit</code></td>
+<td><code>BOX</code>, <code>MILLIGRAM</code>, <code>MILLILITER</code>, <code>UNIT</code></td>
+</tr>
+<tr>
+<td><code>supply_movements.type</code></td>
+<td><code>IN</code>, <code>OUT</code></td>
+</tr>
+</tbody></table></div>
+<h3 id="26-restricciones-e-integridad">2.6 Restricciones e integridad</h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Regla</th>
+<th>Cómo se garantiza</th>
+</tr>
+</thead><tbody><tr>
+<td>Email, nombre de especialidad, sala e insumo únicos</td>
+<td>Índices <code>UNIQUE</code></td>
+</tr>
+<tr>
+<td>Un usuario tiene como máximo un perfil de paciente o de doctor</td>
+<td><code>UNIQUE (user_id)</code> en <code>patients</code> y <code>doctors</code></td>
+</tr>
+<tr>
+<td>Un doctor no tiene dos citas que empiecen a la misma hora</td>
+<td>Índice único funcional <code>uk_appointments_doctor_slot (doctor_id, date, start_time)</code> que <strong>ignora las canceladas</strong>, así un horario cancelado se puede volver a reservar</td>
+</tr>
+<tr>
+<td>Las citas no se solapan (para el doctor ni para el paciente)</td>
+<td>Validación en <code>AppointmentService</code>, con bloqueo pesimista de la fila del doctor al agendar o reprogramar</td>
+</tr>
+<tr>
+<td>Una entrada de historial por cita</td>
+<td><code>UNIQUE (appointment_id)</code> en <code>medical_records</code></td>
+</tr>
+<tr>
+<td>Dos usuarios no descuentan el mismo stock a la vez</td>
+<td><code>@Version</code> en <code>medical_supplies</code> → 409 si hubo un cambio concurrente</td>
+</tr>
+<tr>
+<td>No se borran registros clínicos</td>
+<td>Pacientes, doctores, especialidades e insumos se <strong>desactivan</strong> (<code>active = false</code>) en lugar de borrarse</td>
+</tr>
+</tbody></table></div>
+<h3 id="27-migraciones-de-flyway">2.7 Migraciones de Flyway</h3>
+<p>Flyway aplica estos scripts en orden al arrancar la aplicación y registra cuáles ya corrió en la tabla <code>flyway_schema_history</code>. Hibernate solo <strong>valida</strong> que las entidades coincidan con el esquema (<code>ddl-auto=validate</code>), nunca lo modifica.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Versión</th>
+<th>Archivo</th>
+<th>Qué hace</th>
+</tr>
+</thead><tbody><tr>
+<td>V1</td>
+<td><code>V1__baseline.sql</code></td>
+<td>Esquema inicial completo</td>
+</tr>
+<tr>
+<td>V2</td>
+<td><code>V2__enums_como_texto.sql</code></td>
+<td><code>appointments.status</code> y <code>doctor_schedules.day_of_week</code> pasan de número a texto</td>
+</tr>
+<tr>
+<td>V3</td>
+<td><code>V3__concurrencia_e_integridad.sql</code></td>
+<td><code>version</code> en insumos e índice único de citas por doctor y horario</td>
+</tr>
+<tr>
+<td>V4</td>
+<td><code>V4__reglas_negocio_y_api.sql</code></td>
+<td>Motivo de cita, costos de hospitalización, <code>medical_records</code> con doctor y cita, <code>unit</code>, <code>gender</code> como enum, archivos ligados a paciente, <code>expires_at</code> en tokens</td>
+</tr>
+<tr>
+<td>V3.1, V4.1</td>
+<td><code>db/dev-data/*.sql</code></td>
+<td>Datos de prueba. <strong>Solo en el perfil <code>local</code></strong></td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="3-backend">3. Backend</h2>
+<h3 id="31-capas">3.1 Capas</h3>
+<figure class="diagram"><pre class="mermaid">flowchart TB
+    REQ(["Petición HTTP"]) --&gt; SEC
+
+    subgraph SEC["Seguridad · config/"]
+        direction LR
+        JF["JwtAuthenticationFilter&lt;br/&gt;valida el access token"] --&gt; SC["SecurityConfig&lt;br/&gt;reglas por rol"]
+    end
+
+    SEC --&gt; CTRL
+
+    subgraph CTRL["Controladores · controllers/ y auth/controller/"]
+        C["@RestController&lt;br/&gt;rutas, @Valid sobre los DTOs, códigos HTTP"]
+    end
+
+    CTRL --&gt;|"DTO de entrada"| SVC
+
+    subgraph SVC["Servicios · services/"]
+        direction LR
+        I["Interfaz&lt;br/&gt;IAppointmentService"] -.-&gt; IMPL["Implementación services/impl/&lt;br/&gt;reglas de negocio · @Transactional&lt;br/&gt;propiedad de los recursos"]
+        IMPL --&gt; MAP["Mappers MapStruct&lt;br/&gt;entidad ↔ DTO"]
+    end
+
+    SVC --&gt; REPO
+
+    subgraph REPO["Repositorios · repositories/"]
+        R["Spring Data JPA&lt;br/&gt;consultas y Specifications (filtros)"]
+    end
+
+    REPO --&gt; ENT["Entidades JPA&lt;br/&gt;models/entity/"]
+    ENT --&gt; DB[("MySQL")]
+
+    EX["GlobalExceptionHandler&lt;br/&gt;excepción → ProblemDetail"]
+    SVC -. "lanza excepciones" .-&gt; EX
+    CTRL -. "errores de validación" .-&gt; EX
+    EX -.-&gt; RES(["Respuesta de error&lt;br/&gt;application/problem+json"])</pre></figure>
+<div class="table-wrap"><table><thead><tr>
+<th>Capa</th>
+<th>Responsabilidad</th>
+<th>No debe</th>
+</tr>
+</thead><tbody><tr>
+<td><strong>Controller</strong></td>
+<td>Recibir la petición, validar el formato del DTO (<code>@Valid</code>), obtener el usuario autenticado y devolver el código HTTP correcto</td>
+<td>Tener reglas de negocio ni acceder a repositorios</td>
+</tr>
+<tr>
+<td><strong>Service</strong></td>
+<td>Reglas de negocio, transacciones, verificar que el usuario sea dueño del recurso, convertir con los mappers</td>
+<td>Saber de HTTP</td>
+</tr>
+<tr>
+<td><strong>Repository</strong></td>
+<td>Leer y escribir en la base (Spring Data JPA)</td>
+<td>Tener lógica</td>
+</tr>
+<tr>
+<td><strong>Entity</strong></td>
+<td>Representar una tabla</td>
+<td>Exponerse en la API: siempre se responde con DTOs</td>
+</tr>
+<tr>
+<td><strong>DTO</strong></td>
+<td>Forma de los datos que entran y salen de la API</td>
+<td>—</td>
+</tr>
+</tbody></table></div>
+<p><strong>Errores:</strong> los servicios lanzan excepciones propias (<code>EntityNotFoundException</code> → 404, <code>InvalidDataException</code> → 400, <code>ConflictException</code> → 409, <code>AccessDeniedException</code> → 403, <code>@Version</code> en conflicto → 409, cualquier otro error → 500 sin detalles internos). <code>GlobalExceptionHandler</code> las convierte en un JSON <code>ProblemDetail</code>:</p>
+<pre class="code"><code>{
+  "title": "Datos inválidos",
+  "status": 400,
+  "detail": "La cita está fuera del horario del doctor",
+  "instance": "/api/v1/appointments",
+  "errors": [{ "field": "date", "message": "..." }]
+}</code></pre>
+<h3 id="32-paquetes">3.2 Paquetes</h3>
+<pre class="code"><code>com.hospital.backendHospital
+├── auth/
+│   ├── controller/      AuthController (/auth: register, login, refresh-token)
+│   ├── service/         AuthService, JwtService, TokenService, TokenCleanupTask
+│   └── repository/      Token (entidad de auth_tokens) y TokenRepository
+├── config/              SecurityConfig, JwtAuthenticationFilter, SecurityErrorHandler,
+│                        AppConfig, OpenApiConfig, DataSeeder (roles y admin inicial)
+├── controllers/         Un controlador REST por recurso (/api/v1/...)
+├── services/            Interfaces I*Service
+│   ├── impl/            Implementaciones (reglas de negocio)
+│   └── validation/      ScheduleValidator
+├── repositories/        Repositorios Spring Data JPA
+├── mappers/             Mappers MapStruct (entidad ↔ DTO)
+├── models/
+│   ├── entity/          Entidades JPA y enums
+│   ├── dto/             DTOs de entrada y salida, agrupados por recurso
+│   └── filters/         Parámetros de búsqueda de los listados
+└── exceptions/          Excepciones propias y GlobalExceptionHandler</code></pre>
+<h3 id="33-controller--service--repository">3.3 Controller → Service → Repository</h3>
+<div class="table-wrap"><table><thead><tr>
+<th>Controlador (ruta)</th>
+<th>Servicio</th>
+<th>Repositorios que usa el servicio</th>
+</tr>
+</thead><tbody><tr>
+<td><code>AuthController</code> (<code>/auth</code>)</td>
+<td><code>AuthService</code></td>
+<td><code>UserRepository</code>, <code>RoleRepository</code>, <code>TokenRepository</code> (vía <code>TokenService</code>)</td>
+</tr>
+<tr>
+<td><code>AccountController</code> (<code>/account</code>)</td>
+<td><code>AccountService</code></td>
+<td><code>UserRepository</code>, <code>PatientRepository</code>, <code>DoctorRepository</code></td>
+</tr>
+<tr>
+<td><code>DashboardController</code> (<code>/dashboard</code>)</td>
+<td><code>DashboardService</code></td>
+<td><code>PatientRepository</code>, <code>DoctorRepository</code>, <code>AppointmentRepository</code>, <code>HospitalizationRepository</code>, <code>RoomRepository</code>, <code>MedicalSupplyRepository</code></td>
+</tr>
+<tr>
+<td><code>PatientController</code> (<code>/patients</code>)</td>
+<td><code>PatientService</code>, <code>PDFGeneratorService</code></td>
+<td><code>PatientRepository</code>, <code>UserRepository</code>, <code>RoleRepository</code>, <code>AppointmentRepository</code>, <code>HospitalizationRepository</code>, <code>MedicalRecordRepository</code></td>
+</tr>
+<tr>
+<td><code>DoctorController</code> (<code>/doctors</code>)</td>
+<td><code>DoctorService</code></td>
+<td><code>DoctorRepository</code>, <code>DoctorScheduleRepository</code>, <code>AppointmentRepository</code>, <code>HospitalizationRepository</code>, <code>UserRepository</code>, <code>SpecialtyRepository</code>, <code>RoleRepository</code></td>
+</tr>
+<tr>
+<td><code>DoctorScheduleController</code> (<code>/doctor-schedules</code>)</td>
+<td><code>DoctorScheduleService</code></td>
+<td><code>DoctorScheduleRepository</code>, <code>DoctorRepository</code>, <code>AppointmentRepository</code></td>
+</tr>
+<tr>
+<td><code>ReceptionistController</code> (<code>/receptionists</code>)</td>
+<td><code>ReceptionistService</code></td>
+<td><code>UserRepository</code>, <code>RoleRepository</code></td>
+</tr>
+<tr>
+<td><code>SpecialtyController</code> (<code>/specialties</code>)</td>
+<td><code>SpecialtyService</code></td>
+<td><code>SpecialtyRepository</code>, <code>DoctorRepository</code></td>
+</tr>
+<tr>
+<td><code>AppointmentController</code> (<code>/appointments</code>)</td>
+<td><code>AppointmentService</code></td>
+<td><code>AppointmentRepository</code>, <code>PatientRepository</code>, <code>DoctorRepository</code></td>
+</tr>
+<tr>
+<td><code>MedicalRecordController</code> (<code>/medical-records</code>)</td>
+<td><code>MedicalRecordService</code></td>
+<td><code>MedicalRecordRepository</code>, <code>PatientRepository</code>, <code>AppointmentRepository</code></td>
+</tr>
+<tr>
+<td><code>HospitalizationController</code> (<code>/hospitalizations</code>)</td>
+<td><code>HospitalizationService</code>, <code>SupplyUsageService</code></td>
+<td><code>HospitalizationRepository</code>, <code>PatientRepository</code>, <code>RoomRepository</code>, <code>DoctorRepository</code></td>
+</tr>
+<tr>
+<td><code>RoomController</code> (<code>/rooms</code>)</td>
+<td><code>RoomService</code></td>
+<td><code>RoomRepository</code>, <code>HospitalizationRepository</code></td>
+</tr>
+<tr>
+<td><code>MedicalSupplyController</code> (<code>/medical-supplies</code>)</td>
+<td><code>MedicalSupplyService</code></td>
+<td><code>MedicalSupplyRepository</code></td>
+</tr>
+<tr>
+<td><code>SupplyMovementController</code> (<code>/supply-movements</code>)</td>
+<td><code>SupplyMovementService</code></td>
+<td><code>SupplyMovementRepository</code>, <code>MedicalSupplyRepository</code></td>
+</tr>
+<tr>
+<td><code>SupplyUsageController</code> (<code>/supply-usages</code>)</td>
+<td><code>SupplyUsageService</code></td>
+<td><code>SupplyUsageRepository</code>, <code>HospitalizationRepository</code>, <code>MedicalSupplyRepository</code>, <code>SupplyMovementRepository</code></td>
+</tr>
+<tr>
+<td><code>FileController</code> (<code>/files</code>)</td>
+<td><code>FileService</code></td>
+<td><code>FileRepository</code>, <code>PatientRepository</code>, <code>DoctorRepository</code>, <code>AppointmentRepository</code>, <code>HospitalizationRepository</code></td>
+</tr>
+</tbody></table></div>
+<p>Casi todos los controladores usan también <code>AuthService.getAuthenticatedUser()</code> para saber quién hace la petición. La única excepción a la regla de capas es <code>PatientController</code>, que usa <code>PatientRepository</code> directamente para resolver el paciente autenticado antes de generar su PDF. Todas las rutas, salvo <code>/auth</code>, empiezan con <code>/api/v1</code>.</p>
+<h3 id="34-recorrido-de-una-petición">3.4 Recorrido de una petición</h3>
+<p>Ejemplo: un paciente agenda una cita.</p>
+<figure class="diagram"><pre class="mermaid">sequenceDiagram
+    autonumber
+    actor P as Paciente
+    participant FE as Frontend
+    participant F as JwtAuthenticationFilter
+    participant S as SecurityConfig
+    participant C as AppointmentController
+    participant AS as AppointmentService
+    participant R as Repositorios
+    participant DB as MySQL
+
+    P-&gt;&gt;FE: Elige doctor, fecha y horario
+    FE-&gt;&gt;F: POST /api/v1/appointments&lt;br/&gt;Authorization: Bearer access token
+    F-&gt;&gt;F: Valida firma, tipo ACCESS y que no esté revocado
+    F-&gt;&gt;S: Usuario autenticado con rol PATIENT
+    S-&gt;&gt;C: ¿PATIENT puede hacer POST /appointments? Sí
+    C-&gt;&gt;C: @Valid CreateAppointmentDto
+    C-&gt;&gt;AS: createAppointment(usuario, dto)
+    AS-&gt;&gt;R: Bloquea la fila del doctor (PESSIMISTIC_WRITE)
+    AS-&gt;&gt;R: Valida horario del doctor, solapamientos y una cita pendiente por doctor
+    AS-&gt;&gt;R: save(appointment) con status PENDING
+    R-&gt;&gt;DB: INSERT INTO appointments
+    AS--&gt;&gt;C: AppointmentResponseDto (MapStruct)
+    C--&gt;&gt;FE: 201 Created + JSON
+    Note over AS,FE: Si una regla falla, el servicio lanza InvalidDataException&lt;br/&gt;y GlobalExceptionHandler responde 400 con ProblemDetail</pre></figure>
+<hr>
+<h2 id="4-seguridad">4. Seguridad</h2>
+<ul>
+<li><strong>Sin sesión en el servidor</strong> (<code>STATELESS</code>): cada petición trae su token.</li>
+<li><strong>Dos tokens JWT:</strong> el <em>access token</em> (vida corta) se manda en cada petición; el <em>refresh token</em> (vida larga) solo sirve para pedir un par nuevo en <code>/auth/refresh-token</code>.</li>
+<li><strong>Tokens revocables:</strong> cada token emitido se guarda como hash SHA-256 en <code>auth_tokens</code>. Un token con firma válida se rechaza si fue revocado: por logout, por un login nuevo (una sesión activa por usuario), por rotación del refresh, por desactivación del usuario o por cambio de email.</li>
+<li><strong>Contraseñas</strong> con BCrypt.</li>
+<li><strong>Autorización en dos niveles:</strong> <code>SecurityConfig</code> decide qué <strong>rol</strong> puede usar cada ruta, y los servicios verifican la <strong>propiedad</strong> (un paciente solo ve sus citas, un doctor solo completa las suyas). Cualquier ruta sin regla queda bloqueada (<code>denyAll</code>).</li>
+</ul>
+<h3 id="41-login-y-uso-del-access-token">4.1 Login y uso del access token</h3>
+<figure class="diagram"><pre class="mermaid">sequenceDiagram
+    autonumber
+    participant FE as Frontend
+    participant AC as AuthController
+    participant AU as AuthService
+    participant AM as AuthenticationManager
+    participant J as JwtService
+    participant T as TokenService
+    participant DB as MySQL
+    participant F as JwtAuthenticationFilter
+
+    FE-&gt;&gt;AC: POST /auth/login {email, password}
+    AC-&gt;&gt;AU: authenticate()
+    AU-&gt;&gt;AM: Verifica email y contraseña (BCrypt)
+    AM--&gt;&gt;AU: OK · 401 si la contraseña no coincide · 403 si el usuario está desactivado
+    AU-&gt;&gt;J: Genera access token y refresh token
+    AU-&gt;&gt;T: Revoca los tokens anteriores del usuario
+    AU-&gt;&gt;T: Guarda el hash de los dos tokens nuevos
+    T-&gt;&gt;DB: INSERT INTO auth_tokens
+    AC--&gt;&gt;FE: 200 {accessToken, refreshToken}
+    Note over FE: Los guarda en localStorage
+
+    FE-&gt;&gt;F: GET /api/v1/... + Bearer access token
+    F-&gt;&gt;J: Firma válida, no vencido y de tipo ACCESS
+    F-&gt;&gt;T: ¿Su hash está en auth_tokens sin revocar?
+    F-&gt;&gt;F: Carga el usuario y comprueba que esté activo
+    F--&gt;&gt;FE: Si algo falla, la petición sigue sin autenticar&lt;br/&gt;y la cadena de seguridad responde 401</pre></figure>
+<h3 id="42-renovación-del-token-y-logout">4.2 Renovación del token y logout</h3>
+<figure class="diagram"><pre class="mermaid">sequenceDiagram
+    autonumber
+    participant FE as Frontend (api/client.ts)
+    participant API as Backend
+    participant T as auth_tokens
+
+    FE-&gt;&gt;API: Petición con access token vencido
+    API--&gt;&gt;FE: 401
+    FE-&gt;&gt;API: POST /auth/refresh-token&lt;br/&gt;Authorization: Bearer refresh token
+    API-&gt;&gt;T: ¿Refresh válido y sin revocar?
+    API-&gt;&gt;T: Revoca todos los tokens del usuario (rotación)
+    API-&gt;&gt;T: Guarda el par nuevo
+    API--&gt;&gt;FE: 200 {accessToken, refreshToken}
+    FE-&gt;&gt;API: Repite la petición original con el token nuevo
+    Note over FE,API: Si el refresh también falla, el frontend&lt;br/&gt;cierra la sesión y manda al login
+
+    FE-&gt;&gt;API: POST /auth/logout + Bearer access token
+    API-&gt;&gt;T: Revoca los tokens del usuario
+    API--&gt;&gt;FE: 204 No Content</pre></figure>
+<h3 id="43-permisos-por-rol">4.3 Permisos por rol</h3>
+<p>Resumen de <code>SecurityConfig</code>. ✅ = permitido · <em>propios</em> = el servicio además limita a los registros del usuario.</p>
+<div class="table-wrap"><table><thead><tr>
+<th>Recurso</th>
+<th align="center">Admin</th>
+<th align="center">Recepción</th>
+<th align="center">Doctor</th>
+<th align="center">Paciente</th>
+</tr>
+</thead><tbody><tr>
+<td>Cuenta propia (<code>/account</code>)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Panel (<code>/dashboard</code>)</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Recepcionistas: gestionar</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Pacientes: ver listado y detalle</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Pacientes: registrar en un paso / editar</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Pacientes: completar y editar perfil propio</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Pacientes: activar / desactivar</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Expediente PDF</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">✅</td>
+<td align="center">✅ (propio)</td>
+</tr>
+<tr>
+<td>Doctores, especialidades y horarios: consultar</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+</tr>
+<tr>
+<td>Doctores, especialidades y horarios: crear y editar</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Citas: listado general</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Citas: &quot;mis citas&quot;</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">✅ (propias)</td>
+<td align="center">✅ (propias)</td>
+</tr>
+<tr>
+<td>Citas: agendar, cancelar, reprogramar</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">✅ (propias)</td>
+</tr>
+<tr>
+<td>Citas: completar</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">✅ (propias)</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Historial: consultar de un paciente</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">✅</td>
+<td align="center">✅ (propio)</td>
+</tr>
+<tr>
+<td>Historial: crear y editar entrada</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">✅ (de su cita completada)</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Hospitalizaciones: ver, crear, dar de alta</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅ (solo ver las propias)</td>
+</tr>
+<tr>
+<td>Consumo de insumos</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Salas: consultar</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Salas: crear y editar</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Inventario: consultar</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Inventario: crear, editar, movimientos, stock bajo</td>
+<td align="center">✅</td>
+<td align="center">—</td>
+<td align="center">—</td>
+<td align="center">—</td>
+</tr>
+<tr>
+<td>Archivos</td>
+<td align="center">✅</td>
+<td align="center">✅</td>
+<td align="center">✅ (sus pacientes)</td>
+<td align="center">✅ (propios)</td>
+</tr>
+</tbody></table></div>
+<p>Públicas, sin token: <code>/auth/**</code>, <code>/swagger-ui.html</code>, <code>/v3/api-docs</code> y <code>/actuator/health</code>.</p>
+<hr>
+<h2 id="5-ciclos-de-vida">5. Ciclos de vida</h2>
+<p><strong>Cita</strong></p>
+<figure class="diagram"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; PENDING: agendar&lt;br/&gt;(paciente, recepción o admin)
+    PENDING --&gt; PENDING: reprogramar
+    PENDING --&gt; COMPLETED: completar&lt;br/&gt;(su doctor, desde el día de la cita)
+    PENDING --&gt; CANCELLED: cancelar&lt;br/&gt;(hasta el día de la cita)
+    COMPLETED --&gt; [*]: el doctor puede registrar&lt;br/&gt;una entrada de historial
+    CANCELLED --&gt; [*]: el horario queda libre</pre></figure>
+<p><strong>Hospitalización</strong></p>
+<figure class="diagram"><pre class="mermaid">stateDiagram-v2
+    [*] --&gt; Activa: hospitalizar&lt;br/&gt;(sala con camas libres, paciente y doctor activos)
+    Activa --&gt; Activa: registrar consumo de insumos&lt;br/&gt;(descuenta stock)
+    Activa --&gt; Alta: dar de alta&lt;br/&gt;(discharge_date y total_cost)
+    Alta --&gt; [*]</pre></figure>
+<p><strong>Paciente y doctor:</strong> se desactivan en lugar de borrarse. La desactivación se rechaza si tienen citas <code>PENDING</code> futuras o una hospitalización activa (propia o a su cargo). Un usuario inactivo no puede iniciar sesión y sus tokens quedan revocados.</p>
+<hr>
+<h2 id="6-frontend">6. Frontend</h2>
+<figure class="diagram"><pre class="mermaid">flowchart TB
+    subgraph APP["frontend/src"]
+        MAIN["main.tsx&lt;br/&gt;QueryClient + Router + AuthProvider"]
+        ROUTES["App.tsx&lt;br/&gt;rutas"]
+        GUARDS["components/guards.tsx&lt;br/&gt;exige sesión y rol"]
+        AUTH["auth/AuthContext.tsx&lt;br/&gt;usuario actual, login, logout"]
+
+        subgraph PAGES["pages/"]
+            PA["auth/&lt;br/&gt;login · registro · completar perfil"]
+            PP["patient/&lt;br/&gt;agendar · mis citas · historial ·&lt;br/&gt;hospitalizaciones · archivos · perfil"]
+            PD["doctor/&lt;br/&gt;agenda · perfil"]
+            PS["staff/&lt;br/&gt;pacientes · citas · hospitalizaciones"]
+            PAD["admin/&lt;br/&gt;doctores · recepcionistas · especialidades ·&lt;br/&gt;salas · inventario"]
+        end
+
+        COMP["components/&lt;br/&gt;formularios y piezas reutilizables"]
+
+        subgraph APIL["api/"]
+            EP["endpoints.ts&lt;br/&gt;una función por endpoint"]
+            CL["client.ts&lt;br/&gt;fetch + token + refresh automático&lt;br/&gt;+ errores ProblemDetail"]
+            TY["types.ts&lt;br/&gt;tipos de los DTOs"]
+        end
+    end
+
+    BE[("Backend&lt;br/&gt;/api/v1 · /auth")]
+
+    MAIN --&gt; ROUTES --&gt; GUARDS --&gt; PAGES
+    GUARDS --&gt; AUTH
+    PAGES --&gt; COMP
+    PAGES --&gt;|"useQuery / useMutation"| EP
+    AUTH --&gt; EP
+    EP --&gt; CL
+    CL --&gt;|HTTP| BE</pre></figure>
+<ul>
+<li><strong><code>api/client.ts</code></strong> es el único lugar que habla con el backend: agrega el access token, ante un 401 pide un par nuevo con el refresh token y repite la petición, y convierte los errores <code>ProblemDetail</code> en mensajes para la interfaz.</li>
+<li><strong>TanStack Query</strong> guarda en caché las respuestas (<code>useQuery</code>) y las invalida después de crear o modificar (<code>useMutation</code>).</li>
+<li><strong><code>guards.tsx</code></strong> protege las rutas: sin sesión manda al login; un paciente sin perfil completo, a completar perfil; con un rol sin permiso, a la página de inicio. Esto es solo comodidad para el usuario: la seguridad real la aplica el backend.</li>
+<li>En desarrollo, Vite reenvía <code>/api</code> y <code>/auth</code> al backend (<code>vite.config.ts</code>), así no hay problemas de CORS.</li>
+</ul>
+
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var sources = Array.prototype.map.call(document.querySelectorAll('pre.mermaid'), function (el) {
+      return el.textContent;
+    });
+
+    function isDark() {
+      var forced = root.getAttribute('data-theme');
+      if (forced) return forced === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function render() {
+      document.querySelectorAll('pre.mermaid').forEach(function (el, i) {
+        el.removeAttribute('data-processed');
+        el.textContent = sources[i];
+      });
+      mermaid.initialize({ startOnLoad: false, theme: isDark() ? 'dark' : 'default', securityLevel: 'strict' });
+      mermaid.run({ querySelector: 'pre.mermaid' });
+    }
+
+    try {
+      var saved = localStorage.getItem('theme');
+      if (saved) root.setAttribute('data-theme', saved);
+    } catch (e) {}
+
+    document.getElementById('theme-toggle').addEventListener('click', function () {
+      var next = isDark() ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+      render();
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      if (!root.getAttribute('data-theme')) render();
+    });
+
+    render();
+  })();
+</script>
+</body>
+</html>

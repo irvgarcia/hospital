@@ -27,7 +27,7 @@ import java.util.List;
 import static org.springframework.http.HttpMethod.*;
 
 /**
- * Reglas de acceso por rol (resumen en docs/arquitectura.md, seccion 4.3).
+ * Reglas de acceso por rol (resumen en docs/arquitectura.html, seccion 4.3).
  * Toda ruta que no aparezca aqui queda bloqueada por el denyAll() final: al agregar un endpoint
  * hay que darle su regla explicitamente (y agregarlo a RoleAccessIT).
  * Las reglas especificas ("me", "low-stock", "register") van antes que las que usan {id}.
