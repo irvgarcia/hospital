@@ -1,5 +1,9 @@
 package com.hospital.backendHospital.exceptions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.DisabledException;
@@ -18,6 +22,37 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Otra transaccion modifico el mismo registro entre la lectura y el guardado (@Version, por ejemplo el stock
+     * de un insumo). No se aplico ningun cambio: el cliente puede volver a consultar el recurso y reintentar.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleOptimisticLockingFailure(OptimisticLockingFailureException ex) {
+        log.info("Conflicto de concurrencia: {}", ex.getMessage());
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "Conflicto de concurrencia");
+        errorMap.put("detalle", "El recurso fue modificado por otra operacion al mismo tiempo; vuelve a intentarlo");
+        return errorMap;
+    }
+
+    /**
+     * La base rechazo la operacion por una restriccion (indice unico, llave foranea, NOT NULL), por ejemplo
+     * dos citas del mismo doctor a la misma hora creadas a la vez. El mensaje de MySQL no se devuelve
+     * porque expone tablas y columnas; queda en el log.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, String> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Violacion de integridad: {}", ex.getMostSpecificCause().getMessage());
+        Map<String, String> errorMap = new HashMap<>();
+        errorMap.put("error", "Conflicto con datos existentes");
+        errorMap.put("detalle", "La operacion entra en conflicto con otro registro (por ejemplo, un duplicado)");
+        return errorMap;
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)

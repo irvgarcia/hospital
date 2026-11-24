@@ -12,8 +12,8 @@ import lombok.Setter;
  * Token emitido a un usuario (access o refresh).
  * No se guarda el JWT en claro sino su hash SHA-256: cabe en un indice unico de largo fijo
  * (un JWT con roles y un email largo excedia VARCHAR(255)) y una fuga de la tabla no expone tokens usables.
- * La tabla es nueva ("auth_tokens") para que ddl-auto=update la cree con el esquema correcto;
- * la tabla anterior "token" (y "token_seq") queda sin uso y se puede borrar a mano.
+ * La tabla "auth_tokens" la crea Flyway (V1__baseline.sql). En bases antiguas puede quedar la tabla anterior
+ * "token" (y "token_seq") sin uso; se puede borrar a mano.
  */
 @Getter
 @Setter
@@ -48,5 +48,22 @@ public class Token {
     public enum TokenType {
         ACCESS,
         REFRESH
+    }
+
+    /**
+     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
+     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Token other)) return false;
+        return id != null && id.equals(other.getId());
+    }
+
+    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
+    @Override
+    public int hashCode() {
+        return Token.class.hashCode();
     }
 }
