@@ -5,12 +5,10 @@ import com.hospital.backendHospital.models.entity.DoctorSchedule;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.List;
-
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = NameMapper.class)
 public interface DoctorScheduleMapper {
 
     @Mapping(target = "doctorId", source = "doctor.id")
-    @Mapping(target = "doctorName", source = "doctor.user.firstName")
+    @Mapping(target = "doctorName", source = "doctor.user", qualifiedByName = "fullName")
     DoctorScheduleResponseDto toResponseDto(DoctorSchedule doctorSchedule);
 }

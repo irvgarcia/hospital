@@ -3,7 +3,8 @@ package com.hospital.backendHospital.models.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
@@ -11,7 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -35,6 +37,29 @@ public class Specialty {
     @Builder.Default
     private boolean active = true;
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "specialty")
+    // Sin cascade: guardar o borrar una especialidad no debe crear, modificar ni borrar sus doctores (A15)
+    /** Doctores activos de la especialidad, contados en SQL (B7: sin cargar la coleccion). */
+    @org.hibernate.annotations.Formula("(select count(*) from doctors d where d.specialty_id = id and d.active = 1)")
+    private int doctorCount;
+
+    @OneToMany(mappedBy = "specialty")
+    @Builder.Default
     private List<Doctor> doctor = new ArrayList<>();
+
+    /**
+     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
+     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Specialty other)) return false;
+        return id != null && id.equals(other.getId());
+    }
+
+    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
+    @Override
+    public int hashCode() {
+        return Specialty.class.hashCode();
+    }
 }

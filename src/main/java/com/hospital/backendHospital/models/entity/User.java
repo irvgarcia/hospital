@@ -4,6 +4,7 @@ import com.hospital.backendHospital.auth.repository.Token;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -43,5 +44,27 @@ public class User {
     private Set<Role> roles = new HashSet<>();
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    private List<Token> tokens;
+    @Builder.Default
+    private List<Token> tokens = new ArrayList<>();
+
+    public boolean hasRole(RoleEnum roleEnum) {
+        return roles.stream().anyMatch(role -> role.getRoleEnum() == roleEnum);
+    }
+
+    /**
+     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
+     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User other)) return false;
+        return id != null && id.equals(other.getId());
+    }
+
+    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
+    @Override
+    public int hashCode() {
+        return User.class.hashCode();
+    }
 }

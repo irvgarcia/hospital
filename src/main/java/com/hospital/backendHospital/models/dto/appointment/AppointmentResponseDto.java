@@ -15,20 +15,16 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @Builder
 public class AppointmentResponseDto {
-
     private Long id;
-
+    private Long patientId;
     private String patientName;
-
+    private Long doctorId;
     private String doctorName;
-
+    private String specialty;
     private LocalDate date;
-
     private LocalTime startTime;
-
     private LocalTime endTime;
-
     private AppointmentStatus status;
-
     private BigDecimal total;
+    private String reason;
 }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Unico UserDetailsService de la aplicacion (login y filtro JWT). */
 @Service
 @RequiredArgsConstructor
 public class UserDetailService implements UserDetailsService {
@@ -31,9 +32,10 @@ public class UserDetailService implements UserDetailsService {
                 .flatMap(role -> role.getPermissions().stream())
                 .forEach(permission -> authorityList.add(new SimpleGrantedAuthority(permission.getName())));
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                authorityList);
+        return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
+                .password(user.getPassword())
+                .authorities(authorityList)
+                .disabled(!user.isActive())
+                .build();
     }
 }

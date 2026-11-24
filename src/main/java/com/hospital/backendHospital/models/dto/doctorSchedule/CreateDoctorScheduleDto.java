@@ -15,17 +15,16 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @Builder
 public class CreateDoctorScheduleDto {
+    @NotNull(message = "El doctor es obligatorio")
+    @Positive(message = "El doctor no es válido")
+    private Long doctorId;
 
-    @NotNull(message = "Day of week is required")
+    @NotNull(message = "El día es obligatorio")
     private DayOfWeek dayOfWeek;
 
-    @NotNull(message = "Start time is required")
+    @NotNull(message = "La hora de inicio es obligatoria")
     private LocalTime startTime;
 
-    @NotNull(message = "End time is required")
+    @NotNull(message = "La hora de fin es obligatoria")
     private LocalTime endTime;
-
-    @NotNull(message = "Doctor is required")
-    @Positive(message = "Doctor must be valid")
-    private Long doctor;
 }

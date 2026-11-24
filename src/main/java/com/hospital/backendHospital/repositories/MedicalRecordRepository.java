@@ -1,15 +1,17 @@
 package com.hospital.backendHospital.repositories;
 
 import com.hospital.backendHospital.models.entity.MedicalRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, Long> {
-    List<MedicalRecord> findAllByPatientId(Long id);
 
-    Optional<MedicalRecord> findByAppointmentId(Long id);
+    Page<MedicalRecord> findByPatientId(Long patientId, Pageable pageable);
 
-    boolean existsByAppointmentId(Long id);
+    List<MedicalRecord> findByPatientIdOrderByDateDescIdDesc(Long patientId);
+
+    boolean existsByAppointmentId(Long appointmentId);
 }

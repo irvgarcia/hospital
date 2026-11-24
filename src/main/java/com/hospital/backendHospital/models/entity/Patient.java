@@ -3,7 +3,8 @@ package com.hospital.backendHospital.models.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
@@ -11,7 +12,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -35,14 +37,16 @@ public class Patient {
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String gender;
+    private Gender gender;
 
     @Column(nullable = false)
     private String allergies;
 
+    @Convert(converter = BloodTypeConverter.class)
     @Column(name = "blood_type", nullable = false)
-    private String bloodType;
+    private BloodType bloodType;
 
     @Column(name = "chronic_diseases", nullable = false)
     private String chronicDiseases;
@@ -76,9 +80,23 @@ public class Patient {
     private boolean active = true;
 
     @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, mappedBy = "patient")
+    @Builder.Default
     private List<Appointment> appointments = new ArrayList<>();
 
-    @OneToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE}, mappedBy = "patient")
-    private List<MedicalRecord> medicalRecords = new ArrayList<>();
-}
+    /**
+     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
+     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Patient other)) return false;
+        return id != null && id.equals(other.getId());
+    }
 
+    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
+    @Override
+    public int hashCode() {
+        return Patient.class.hashCode();
+    }
+}

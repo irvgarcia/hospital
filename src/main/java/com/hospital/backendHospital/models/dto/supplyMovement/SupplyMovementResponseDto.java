@@ -13,16 +13,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class SupplyMovementResponseDto {
-
     private Long id;
-
+    private Long supplyId;
     private String supplyName;
-
     private MovementType type;
-
     private int quantityChanged;
-
     private LocalDateTime timestamp;
-
     private String performedBy;
 }
