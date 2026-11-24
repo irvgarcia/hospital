@@ -2,51 +2,43 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<!-- Padre: hereda configuracion de Spring Boot y fija las versiones de sus dependencias y plugins
+	     (por eso muchas dependencias de abajo no llevan <version>). -->
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>3.4.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/> <!-- buscar el padre en el repositorio, no en una carpeta local -->
 	</parent>
+
+	<!-- Identidad del proyecto -->
 	<groupId>com.hospital</groupId>
 	<artifactId>backendHospital</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>backendHospital</name>
 	<description>API REST para la gestion de un hospital: pacientes, doctores, citas, hospitalizaciones e inventario</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+
+	<!-- Versiones en un solo lugar: solo las que Spring Boot no administra o que se sobrescriben a proposito -->
 	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<java.version>21</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
 		<jjwt.version>0.12.6</jjwt.version>
 		<mapstruct.version>1.5.5.Final</mapstruct.version>
 		<lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
-		<!-- Boot 3.4.5 trae 1.20.6, incompatible con Docker Engine 29+ (API minima 1.44); 1.21.4 lo corrige -->
+		<springdoc.version>2.8.8</springdoc.version>
+		<openpdf.version>1.3.8</openpdf.version>
+		<jacoco.version>0.8.12</jacoco.version>
+		<!-- Sobrescribe la de Spring Boot: 3.4.5 trae 1.20.6, incompatible con Docker Engine 29+ (API minima 1.44) -->
 		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
+
 	<dependencies>
+		<!-- ===== Spring Boot ===== -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-actuator</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-data-jpa</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
+			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -54,13 +46,24 @@
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-web</artifactId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
 			<scope>runtime</scope>
 			<optional>true</optional>
+		</dependency>
+
+		<!-- ===== Base de datos ===== -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.mysql</groupId>
+			<artifactId>mysql-connector-j</artifactId>
+			<scope>runtime</scope>
 		</dependency>
 		<!-- Migraciones del esquema (src/main/resources/db/migration) -->
 		<dependency>
@@ -71,31 +74,13 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-mysql</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>com.mysql</groupId>
-			<artifactId>mysql-connector-j</artifactId>
-			<scope>runtime</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.projectlombok</groupId>
-			<artifactId>lombok</artifactId>
-			<optional>true</optional>
-		</dependency>
+
+		<!-- ===== Seguridad y JWT ===== -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
+			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-		<dependency>
-			<groupId>org.springframework.security</groupId>
-			<artifactId>spring-security-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.mapstruct</groupId>
-			<artifactId>mapstruct</artifactId>
-			<version>${mapstruct.version}</version>
-		</dependency>
+		<!-- jjwt-api se usa en el codigo; impl y jackson solo hacen falta al ejecutar -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
@@ -113,6 +98,43 @@
 			<version>${jjwt.version}</version>
 			<scope>runtime</scope>
 		</dependency>
+
+		<!-- ===== Utilidades ===== -->
+		<!-- Documentacion de la API: /swagger-ui.html y /v3/api-docs -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
+		</dependency>
+		<!-- PDF del expediente del paciente -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>${openpdf.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${mapstruct.version}</version>
+		</dependency>
+		<!-- Solo genera codigo al compilar: optional y excluido del .jar (ver spring-boot-maven-plugin) -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- ===== Pruebas (scope test: no van en el .jar) ===== -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-testcontainers</artifactId>
@@ -128,21 +150,11 @@
 			<artifactId>mysql</artifactId>
 			<scope>test</scope>
 		</dependency>
-		<!-- Documentacion de la API: /swagger-ui.html y /v3/api-docs -->
-		<dependency>
-			<groupId>org.springdoc</groupId>
-			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.8.8</version>
-		</dependency>
-        <dependency>
-            <groupId>com.github.librepdf</groupId>
-            <artifactId>openpdf</artifactId>
-            <version>1.3.8</version>
-        </dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
+			<!-- Empaqueta el .jar ejecutable y habilita ./mvnw spring-boot:run -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
@@ -155,20 +167,23 @@
 					</excludes>
 				</configuration>
 			</plugin>
+
+			<!-- Procesadores de anotaciones que generan codigo al compilar.
+			     El binding hace que MapStruct vea los getters y setters que genera Lombok. -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<annotationProcessorPaths>
 						<path>
-							<groupId>org.mapstruct</groupId>
-							<artifactId>mapstruct-processor</artifactId>
-							<version>${mapstruct.version}</version>
-						</path>
-						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
 							<version>${lombok.version}</version>
+						</path>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${mapstruct.version}</version>
 						</path>
 						<path>
 							<groupId>org.projectlombok</groupId>
@@ -178,8 +193,10 @@
 					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
+
+			<!-- Pruebas de integracion (*IT) en ./mvnw verify; requieren Docker (Testcontainers).
+			     Las unitarias (*Test) las corre surefire, que ya viene configurado por el padre. -->
 			<plugin>
-				<!-- Pruebas de integracion (*IT): requieren Docker (Testcontainers) -->
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
 				<executions>
@@ -191,37 +208,41 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<!-- Cobertura de codigo de unitarias + integracion -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.12</version>
+				<version>${jacoco.version}</version>
 				<configuration>
+					<!-- Codigo sin logica propia: no cuenta para la cobertura -->
 					<excludes>
 						<exclude>**/dto/**</exclude>
-						<exclude>**/filters/**</exclude>
 						<exclude>**/entity/**</exclude>
 						<exclude>**/mappers/**</exclude>
+						<exclude>**/filters/**</exclude>
 						<exclude>**/config/**</exclude>
 						<exclude>**/exceptions/**</exclude>
-												<exclude>**/auth/repository/**</exclude>
-						<exclude>**/models/**/dto/**</exclude>
+						<exclude>**/auth/repository/**</exclude>
 					</excludes>
 				</configuration>
 				<executions>
+					<!-- Instrumenta surefire y failsafe; ambos escriben en target/jacoco.exec -->
 					<execution>
-						<!-- Instrumenta surefire y failsafe; ambos escriben en target/jacoco.exec -->
+						<id>prepare-agent</id>
 						<goals>
 							<goal>prepare-agent</goal>
 						</goals>
 					</execution>
+					<!-- En verify, despues de failsafe, para incluir las pruebas de integracion -->
 					<execution>
-						<!-- En verify, despues de failsafe, para incluir la cobertura de las pruebas de integracion -->
 						<id>report</id>
 						<phase>verify</phase>
 						<goals>
 							<goal>report</goal>
 						</goals>
 					</execution>
+					<!-- Falla el build si la cobertura de lineas baja del 75 % (77 % al cerrar la Fase 7) -->
 					<execution>
 						<id>jacoco-check</id>
 						<goals>
@@ -230,7 +251,6 @@
 						<configuration>
 							<rules>
 								<rule>
-									<!-- Fase 7: lineas cubiertas por unitarias + integracion (77 % al cerrar la fase). No bajarlo. -->
 									<element>BUNDLE</element>
 									<limits>
 										<limit>
@@ -247,5 +267,4 @@
 			</plugin>
 		</plugins>
 	</build>
-
 </project>
