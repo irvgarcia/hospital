@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,6 +36,12 @@ public class JwtService {
 
     public String generateRefreshToken(final User user) {
         return buildToken(user, refreshExpiration, TokenType.REFRESH);
+    }
+
+    /** Momento en que vence un token de ese tipo emitido ahora (se guarda para limpiar tokens viejos). */
+    public LocalDateTime expiresAt(final TokenType type) {
+        long millis = type == TokenType.ACCESS ? jwtExpiration : refreshExpiration;
+        return LocalDateTime.now().plus(Duration.ofMillis(millis));
     }
 
     /**

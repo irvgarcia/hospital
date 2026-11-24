@@ -8,7 +8,11 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
     boolean existsByEmail(String email);
+
+    /** Otro usuario (distinto de id) ya usa ese email. */
+    boolean existsByEmailAndIdNot(String email, Long id);
 
     List<User> findByRoles_RoleEnum(RoleEnum roleEnum);
 

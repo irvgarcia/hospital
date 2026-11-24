@@ -748,8 +748,22 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
    - Flyway la ejecuta una sola vez por base. Para recargarla desde cero: `docker compose down -v` y `docker compose up -d`.
    - Se hace en esta fase y no antes porque el esquema cambia aquí (A1) y en la Fase 6 (M8); un script escrito antes habría que reescribirlo. Si el historial clínico cambia en la Fase 6, se actualiza con una migración nueva en la misma carpeta.
 
-### Fase 4 — Reglas de negocio (3–4 días)
+### Fase 4 — Reglas de negocio (3–4 días) — ✅ COMPLETADA (21/11/2026)
 **Hallazgos:** A2, A3, A4, A5, A6, A7, A9, M2, M4, M11.
+
+> **Las fases 4 a 7 se hicieron juntas** en la rama `fase-4-a-7-backend`: casi todos los servicios, DTOs y controladores se reescribían en las tres fases, y hacerlas por separado obligaba a reescribir las pruebas tres veces. El esquema cambia con una sola migración (`V4__reglas_negocio_y_api.sql`) y los datos de desarrollo con `V4_1__datos_desarrollo_api.sql`.
+>
+> **Decisiones:**
+> - M4: `ScheduleValidator` (estático) exige inicio < fin, turno de al menos 60 minutos, dentro de 06:00–22:00 y sin días repetidos. Lo usan el alta de doctor, el horario suelto y la actualización.
+> - A4: `schedules` solo se procesa si viene; reemplaza los horarios. Se rechaza (400) quitar o recortar un día que deja fuera una cita pendiente. El email se puede cambiar (único, 409) y revoca los tokens del doctor, porque el email es el *subject* del JWT.
+> - A5: la desactivación solo se bloquea por citas `PENDING` de hoy en adelante y por hospitalizaciones activas (del paciente o a cargo del doctor). Se agregó `activate` para revertirla.
+> - A2: un paciente **puede** tener varias citas pendientes, pero solo una por doctor. `GET /appointments/me/next` devuelve la próxima (204 si no hay).
+> - M2: `@FutureOrPresent`; si la fecha es hoy, la hora de inicio debe ser posterior a la actual; inicio < fin con su propio mensaje; duración de 15 a 60 minutos; paciente, doctor y especialidad activos.
+> - A8 (complemento): al agendar o reprogramar se bloquea la fila del doctor (`PESSIMISTIC_WRITE`), así dos reservas simultáneas no pasan ambas la validación de solapamiento.
+> - A3: registro en dos pasos para el paciente (con 409 si el perfil ya existe y `profileCompleted` en `/account`) y registro en un paso para recepción/admin (`POST /patients/register`).
+> - A6: la sala admite tantos pacientes como su `capacity`; `available` significa "tiene camas libres" y `occupiedBeds` se calcula con `@Formula`. Alta doble → 400. `costPerDay` se guarda y `totalCost` = costo × días (mínimo 1) al dar de alta.
+> - M11: el stock mínimo es un **umbral de alerta**: consumos y salidas pueden bajar hasta 0 y nunca por debajo; `lowStock` en la respuesta y reporte `GET /medical-supplies/low-stock`. Insumo inactivo → 400.
+> - A9: solo usuarios con rol RECEPTIONIST (otro id → 404), email único (409) y `@PathVariable` corregido.
 1. Crear `ScheduleValidator` y usarlo en los tres puntos (M4).
 2. `updateDoctorAndSchedule`: manejar `schedules` nulos, días repetidos, días con citas futuras y el email (A4).
 3. Desactivación: usar queries `exists...StatusAndDateGreaterThanEqual` (A5).
@@ -761,8 +775,16 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 
 **Pruebas:** un test unitario por regla, incluyendo los casos negativos.
 
-### Fase 5 — Errores y validación (1–2 días)
+### Fase 5 — Errores y validación (1–2 días) — ✅ COMPLETADA (21/11/2026)
 **Hallazgos:** A10, M1, M3, B10.
+
+> **Decisiones:**
+> - Formato único `ProblemDetail` (`application/problem+json`): `title`, `status`, `detail`, `instance` y, en validación, `errors: [{field, message}]`. Lo usan también el entry point 401 y el handler 403 de la cadena de seguridad. El JSON anterior `{error, detalle}` ya no existe.
+> - Códigos: 400 (validación, JSON ilegible, enum o tipo inválido, parámetro faltante, multipart), 401, 403, 404, 405, 409 (`ConflictException`, `@Version`, integridad), 413, 415 y 500 genérico sin el mensaje interno.
+> - Todos los mensajes de negocio y de validación están en español (el frontend los muestra tal cual).
+> - M1: nombres de 2 a 50 caracteres en todos los DTOs; wrappers (`Integer`, `Boolean`) donde se usa `@NotNull`; `Gender` (columna enum) y `BloodType` (etiqueta "O+" en la base y en el JSON, con `AttributeConverter`; un valor antiguo inválido se lee como nulo).
+> - M3: listas y páginas vacías responden 200.
+> - `RoleAccessIT` exige además que ningún endpoint responda 500 al rol permitido con un cuerpo vacío.
 1. `GlobalExceptionHandler` con `ProblemDetail`:
    - 400: validación, JSON ilegible, tipo incorrecto.
    - 401/403: autenticación y acceso.
@@ -774,8 +796,18 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 3. Corregir las validaciones de los DTOs y crear los enums `BloodType` y `Gender` (M1).
 4. Devolver listas y páginas vacías en vez de 404 (M3).
 
-### Fase 6 — Completar la API (4–6 días)
+### Fase 6 — Completar la API (4–6 días) — ✅ COMPLETADA (21/11/2026)
 **Hallazgos:** A11, A12, M5, M6, M7, M8, M9, B4, B8.
+
+> **Decisiones:**
+> - B4: rutas en kebab-case, sin verbos salvo acciones de estado (`/deactivate`, `/activate`, `/complete`, `/cancel`, `/reschedule`, `/discharge`); todo bajo `/api/v1`; las creaciones responden 201. Rutas nuevas: `/account`, `/dashboard`, `/doctor-schedules`, `/medical-records`, `/medical-supplies`, `/supply-movements` (un solo `POST` con `type` IN/OUT), `/supply-usages`, `/files`. El listado de consumos está en `GET /hospitalizations/{id}/supply-usages`.
+> - A11/B8: todos los DTOs llevan `id`, ids relacionados y nombres completos; la cita trae especialidad y motivo; la hospitalización trae doctor y costos.
+> - A12: catálogo para pacientes (solo doctores y especialidades activos) y `GET /doctors/{id}/availability?date=` con horarios libres de 30 minutos; endpoints `me` de paciente y doctor; `GET /appointments/me` para paciente y doctor.
+> - M9: CRUD de especialidades (desactivar con doctores activos → 400), salas (la capacidad no baja de las camas ocupadas), insumos (la cantidad solo cambia con movimientos), horarios (editar/borrar respetando citas pendientes), hospitalización por id y reprogramación de citas.
+> - M8: `medical_record` → `medical_records`, una entrada por cita `COMPLETED` del doctor autenticado (409 si ya existe), editable solo por su autor. Las entradas antiguas quedan sin doctor ni cita.
+> - M6: archivos ligados a paciente y a quien los subió, tamaño en columna propia, listado por proyección (sin cargar bytes), lista blanca PDF/PNG/JPG/WEBP/TXT con extensión coherente, 5 MB. Acceso: admin y recepción a todo, doctor solo a pacientes con los que tiene cita u hospitalización, paciente solo a lo suyo; borrar solo admin o quien lo subió.
+> - M7: PDF con datos del paciente, historial, últimas 20 citas y hospitalizaciones; se genera antes de escribir la respuesta (un 404 sale como JSON) y **no se guarda** (cada descarga refleja los datos actuales). Rutas: `/patients/{id}/medical-record/pdf` (admin, doctor) y `/patients/me/medical-record/pdf`.
+> - M5: el filtro de horarios aplica `doctorId` (Long), revisa blancos y usa un solo join.
 1. Agregar `id` a todos los DTOs de respuesta, nombres completos y los campos faltantes (A11, B8).
 2. Unificar las rutas REST (B4). Hacerlo en el mismo PR que actualiza `SecurityConfig` y avisar al frontend.
 3. Endpoints de catálogo para pacientes: doctores activos por especialidad y sus horarios (A12).
@@ -785,8 +817,21 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 7. Archivos: corregir la URL, guardar el tamaño, usar `LONGBLOB`, validar tipo y tamaño, y agregar `patient_id`/`uploaded_by` (M6).
 8. Rediseñar el historial clínico como entradas ligadas a una cita y un doctor (M8), y generar el PDF con contenido real (M7).
 
-### Fase 7 — Limpieza y calidad (1–2 días)
+### Fase 7 — Limpieza y calidad (1–2 días) — ✅ COMPLETADA (21/11/2026)
 **Hallazgos:** B2, B3, B5, B6, B7, M13 (resto).
+
+> **Decisiones:**
+> - B2: `accessToken`, `Unit` (columna `unit`, con la unidad nueva `UNIT`), paquete `receptionist`, `IHospitalizationService`, mensajes corregidos. ⚠️ Cambia el JSON de login: el frontend nuevo ya usa `accessToken`.
+> - B3: se borraron las excepciones que chocaban con `java.io`, `PatientSummaryDto`, `ResponseMessage` y los campos sin uso; los errores de archivo usan `FileStorageException`.
+> - B5: id de especialidad `Long`.
+> - B6: `DataSeeder` (`ApplicationRunner` con `@Transactional` efectivo), sin el permiso `REFACTOR`. Los permisos se conservan como dato; la autorización es por rol (M10).
+> - B7: `doctorCount` con `@Formula` (solo doctores activos), `default_batch_fetch_size=50` para los horarios en listados, y `TokenCleanupTask` diario (03:00) que borra tokens revocados o vencidos (columna nueva `expires_at`).
+> - springdoc 2.8.8 en `/swagger-ui.html` con esquema Bearer; se apaga con `SPRINGDOC_ENABLED=false`. CORS configurable con `APP_CORS_ALLOWED_ORIGINS`.
+> - M13: 81 pruebas unitarias (una por regla, con casos negativos) y 393 de integración, entre ellas `EndToEndFlowIT` con el flujo completo del checklist. Cobertura de líneas 77 %; el umbral de JaCoCo queda en 75 %.
+>
+> **Frontend** (`frontend/`, React + TypeScript + Vite + Tailwind): portal por rol que cubre toda la API anterior; renueva el access token con el refresh automáticamente y muestra los mensajes de `ProblemDetail`. Ver el README.
+>
+> **Pendientes fuera del código:** desactivar o borrar el admin legado `chucholo` en cada base existente; en producción, antes de desplegar, configurar `APP_CORS_ALLOWED_ORIGINS` con el dominio del frontend y revisar que la V3 no falle por citas duplicadas (ver Fase 3).
 1. Renombrados y mensajes (B2). El cambio `accesToken` → `accessToken` se coordina con el frontend.
 2. Eliminar el código muerto (B3) y cambiar el id de especialidad a `Long` (B5).
 3. Crear el `DataSeeder` (B6), arreglar el N+1 de `doctorCount` y limpiar los tokens expirados (B7).
@@ -797,17 +842,17 @@ El plan está en **orden de ejecución**. Primero se arma una base de pruebas co
 
 ## 7. Checklist de verificación final
 
-- [ ] `./mvnw test` (unitarias) en verde sin Docker.
-- [ ] `./mvnw verify` (unitarias + integración con Testcontainers) en verde con Docker, sin MySQL instalado localmente.
+- [x] `./mvnw test` (unitarias) en verde sin Docker.
+- [x] `./mvnw verify` (unitarias + integración con Testcontainers) en verde con Docker, sin MySQL instalado localmente.
 - [x] Las migraciones de Flyway se ejecutan y validan contra el MySQL del contenedor en cada `verify`.
-- [ ] `docker compose up -d` levanta la base de datos de desarrollo y la aplicación arranca contra ella.
-- [ ] Pruebas de seguridad por rol cubren el 100 % de los endpoints.
-- [ ] Flujo completo probado de punta a punta:
-  - [ ] Registrar paciente → completar perfil.
-  - [ ] Listar doctores → agendar cita.
-  - [ ] El doctor completa la cita → crea una entrada del historial.
-  - [ ] Hospitalizar → consumir insumos → dar de alta.
-  - [ ] Generar el PDF del expediente.
-- [ ] Ningún endpoint responde 500 ante entradas inválidas.
-- [ ] Sin secretos en el repo y con el secreto JWT rotado.
+- [x] `docker compose up -d` levanta la base de datos de desarrollo y la aplicación arranca contra ella (migraciones V1–V4.1 verificadas el 21/11/2026).
+- [x] Pruebas de seguridad por rol cubren el 100 % de los endpoints (`RoleAccessIT`, 350 casos).
+- [x] Flujo completo probado de punta a punta (`EndToEndFlowIT`):
+  - [x] Registrar paciente → completar perfil.
+  - [x] Listar doctores → agendar cita.
+  - [x] El doctor completa la cita → crea una entrada del historial.
+  - [x] Hospitalizar → consumir insumos → dar de alta.
+  - [x] Generar el PDF del expediente.
+- [x] Ningún endpoint responde 500 ante entradas inválidas.
+- [ ] Sin secretos en el repo y con el secreto JWT rotado. *(El repo ya no tiene secretos; rotar el secreto en producción es una tarea manual pendiente.)*
 - [x] El esquema lo maneja Flyway y `ddl-auto=validate`.

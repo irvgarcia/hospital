@@ -4,41 +4,52 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
+/**
+ * Entrada del historial clinico (M8). Un paciente tiene muchas entradas; cada una la escribe el doctor
+ * que atendio una cita completada. doctor y appointment son nulos solo en entradas anteriores a la Fase 6.
+ */
 @Entity
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(name = "medical_record")
+@Table(name = "medical_records")
 public class MedicalRecord {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(optional = false, fetch = FetchType.LAZY)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "doctor_id")
+    private Doctor doctor;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "appointment_id", unique = true)
+    private Appointment appointment;
 
     @Column(nullable = false)
     private LocalDate date;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String diagnostics;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 1000)
     private String treatment;
 
-    /**
-     * Igualdad por id: dos instancias representan la misma fila si tienen el mismo id.
-     * Una entidad nueva (sin id) solo es igual a si misma. Se usa other.getId() porque el otro objeto puede ser un proxy de Hibernate.
-     */
+    @Column(length = 1000)
+    private String notes;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -46,7 +57,6 @@ public class MedicalRecord {
         return id != null && id.equals(other.getId());
     }
 
-    /** Constante por clase: no cambia cuando la entidad recibe su id al guardarse, asi sigue encontrandose en un Set. */
     @Override
     public int hashCode() {
         return MedicalRecord.class.hashCode();

@@ -37,14 +37,16 @@ public class Patient {
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String gender;
+    private Gender gender;
 
     @Column(nullable = false)
     private String allergies;
 
+    @Convert(converter = BloodTypeConverter.class)
     @Column(name = "blood_type", nullable = false)
-    private String bloodType;
+    private BloodType bloodType;
 
     @Column(name = "chronic_diseases", nullable = false)
     private String chronicDiseases;

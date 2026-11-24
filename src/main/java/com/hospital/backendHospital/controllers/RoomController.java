@@ -2,6 +2,7 @@ package com.hospital.backendHospital.controllers;
 
 import com.hospital.backendHospital.models.dto.room.CreateRoomDto;
 import com.hospital.backendHospital.models.dto.room.RoomResponseDto;
+import com.hospital.backendHospital.models.dto.room.UpdateRoomDto;
 import com.hospital.backendHospital.services.IRoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,18 +19,24 @@ public class RoomController {
 
     private final IRoomService roomService;
 
+    /** available=true: solo salas con camas libres. */
     @GetMapping
-    public ResponseEntity<List<RoomResponseDto>> getAllRooms(){
-        return ResponseEntity.ok(roomService.listRooms());
+    public List<RoomResponseDto> listRooms(@RequestParam(required = false) Boolean available) {
+        return roomService.listRooms(available);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RoomResponseDto> listRoomById(@PathVariable Long id){
-        return ResponseEntity.ok(roomService.listRoomById(id));
+    public RoomResponseDto getRoom(@PathVariable Long id) {
+        return roomService.getRoom(id);
     }
 
     @PostMapping
-    public ResponseEntity<RoomResponseDto> createRoom(@Valid @RequestBody CreateRoomDto createRoomDto){
-        return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(createRoomDto));
+    public ResponseEntity<RoomResponseDto> createRoom(@Valid @RequestBody CreateRoomDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(roomService.createRoom(dto));
+    }
+
+    @PatchMapping("/{id}")
+    public RoomResponseDto updateRoom(@PathVariable Long id, @Valid @RequestBody UpdateRoomDto dto) {
+        return roomService.updateRoom(id, dto);
     }
 }

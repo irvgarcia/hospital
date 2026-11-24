@@ -8,9 +8,8 @@ import java.time.DayOfWeek;
 import java.util.List;
 
 public interface DoctorScheduleRepository extends JpaRepository<DoctorSchedule, Long>, JpaSpecificationExecutor<DoctorSchedule> {
+
     List<DoctorSchedule> findByDoctorId(Long id);
 
-    Boolean existsByDoctorIdAndDayOfWeek(Long id, DayOfWeek dayOfWeek);
-
-    void deleteByDoctorId(Long id);
+    boolean existsByDoctorIdAndDayOfWeek(Long id, DayOfWeek dayOfWeek);
 }

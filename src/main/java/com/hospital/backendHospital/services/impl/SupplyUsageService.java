@@ -31,50 +31,52 @@ public class SupplyUsageService implements ISupplyUsageService {
     @Override
     @Transactional(readOnly = true)
     public List<SupplyUsageResponseDto> getUsageByHospitalization(Long hospitalizationId) {
-        List<SupplyUsage> supplyUsages = supplyUsageRepository.findAll();
-
-        return supplyUsageMapper.toListoDto(supplyUsages);
+        if (!hospitalizationRepository.existsById(hospitalizationId)) {
+            throw new EntityNotFoundException("No existe la hospitalización con id " + hospitalizationId);
+        }
+        // A7: antes devolvia los consumos de todas las hospitalizaciones
+        return supplyUsageMapper.toListDto(supplyUsageRepository.findByHospitalizationIdOrderByUsedAtDesc(hospitalizationId));
     }
 
     @Override
     @Transactional
-    public SupplyUsageResponseDto registerUsage(User user, CreateSupplyUsageDto createSupplyUsageDto) {
-        Hospitalization hospitalization = hospitalizationRepository.findById(createSupplyUsageDto.getHospitalizationId()).orElseThrow(
-                ()-> new EntityNotFoundException("Hospitalization not found"));
-
-        MedicalSupply medicalSupply = medicalSupplyRepository.findById(createSupplyUsageDto.getSupplyId()).orElseThrow(
-                ()-> new EntityNotFoundException("Medical supply not found"));
+    public SupplyUsageResponseDto registerUsage(User user, CreateSupplyUsageDto dto) {
+        Hospitalization hospitalization = hospitalizationRepository.findById(dto.getHospitalizationId())
+                .orElseThrow(() -> new EntityNotFoundException("No existe la hospitalización con id " + dto.getHospitalizationId()));
+        MedicalSupply supply = medicalSupplyRepository.findById(dto.getSupplyId())
+                .orElseThrow(() -> new EntityNotFoundException("No existe el insumo con id " + dto.getSupplyId()));
 
         if (!hospitalization.isActive()){
-            throw new InvalidDataException("Hospitalization has ended");
+            throw new InvalidDataException("La hospitalización ya terminó");
+        }
+        if (!supply.isActive()) {
+            throw new InvalidDataException("El insumo " + supply.getName() + " está desactivado");
+        }
+        // M11: el stock puede bajar hasta 0 (el minimo es solo una alerta), nunca por debajo
+        if (dto.getQuantityUsed() > supply.getQuantity()) {
+            throw new InvalidDataException("No hay suficiente " + supply.getName() + " en inventario (disponible: " + supply.getQuantity() + ")");
         }
 
-        if (createSupplyUsageDto.getQuantityUsed() > medicalSupply.getQuantity()) {
-            throw new InvalidDataException("Not enough supply in stock");
-        }
-
-        SupplyUsage supplyUsage = SupplyUsage.builder()
+        LocalDateTime now = LocalDateTime.now();
+        SupplyUsage usage = SupplyUsage.builder()
                 .hospitalization(hospitalization)
-                .supply(medicalSupply)
-                .quantityUsed(createSupplyUsageDto.getQuantityUsed())
-                .usedAt(LocalDateTime.now())
+                .supply(supply)
+                .quantityUsed(dto.getQuantityUsed())
+                .usedAt(now)
                 .build();
+        supplyUsageRepository.save(usage);
 
-        supplyUsageRepository.save(supplyUsage);
+        // @Version en MedicalSupply: si otro movimiento cambio el stock al mismo tiempo, responde 409
+        supply.setQuantity(supply.getQuantity() - dto.getQuantityUsed());
+        medicalSupplyRepository.save(supply);
 
-        medicalSupply.setQuantity(medicalSupply.getQuantity() - createSupplyUsageDto.getQuantityUsed());
-        medicalSupplyRepository.save(medicalSupply);
-
-        SupplyMovement supplyMovement = SupplyMovement.builder()
-                .supply(medicalSupply)
+        supplyMovementRepository.save(SupplyMovement.builder()
+                .supply(supply)
                 .type(MovementType.OUT)
-                .quantityChanged(createSupplyUsageDto.getQuantityUsed())
-                .timestamp(LocalDateTime.now())
+                .quantityChanged(dto.getQuantityUsed())
+                .timestamp(now)
                 .performedBy(user)
-                .build();
-
-        supplyMovementRepository.save(supplyMovement);
-
-        return supplyUsageMapper.toResponseDto(supplyUsage);
+                .build());
+        return supplyUsageMapper.toResponseDto(usage);
     }
 }

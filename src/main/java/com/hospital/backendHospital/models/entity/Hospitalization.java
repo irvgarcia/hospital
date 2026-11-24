@@ -8,6 +8,7 @@ import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -43,6 +44,14 @@ public class Hospitalization {
 
     @Column(nullable = false)
     private String reason;
+
+    /** Costo de la estancia por dia (A6). */
+    @Column(name = "cost_per_day", nullable = false)
+    private BigDecimal costPerDay;
+
+    /** Se calcula al dar de alta: costPerDay x dias de estancia (el dia de ingreso cuenta como uno). */
+    @Column(name = "total_cost")
+    private BigDecimal totalCost;
 
     @Column(nullable = false)
     @Builder.Default

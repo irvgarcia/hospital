@@ -50,7 +50,7 @@ class AppointmentIT extends AbstractClinicalIntegrationTest {
 
         book(createPatient(), doctor, "11:15", "11:45")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalle").value(org.hamcrest.Matchers.containsString("already has an appointment")));
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("ya tiene una cita en ese horario")));
     }
 
     @Test
@@ -60,7 +60,7 @@ class AppointmentIT extends AbstractClinicalIntegrationTest {
 
         book(patient, createDoctor(), "12:15", "12:45")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detalle").value("The patient already has an appointment for that time and day"));
+                .andExpect(jsonPath("$.detail").value("El paciente ya tiene una cita en ese horario"));
     }
 
     @Test
@@ -81,7 +81,7 @@ class AppointmentIT extends AbstractClinicalIntegrationTest {
 
         mockMvc.perform(patch("/api/v1/appointments/" + appointment.getId() + "/complete")
                         .header(HttpHeaders.AUTHORIZATION, bearer(accessToken(doctor.getUser().getEmail()))))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
 
         assertThat(appointmentRepository.findById(appointment.getId()).orElseThrow().getStatus())
                 .isEqualTo(AppointmentStatus.COMPLETED);

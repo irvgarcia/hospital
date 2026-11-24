@@ -10,9 +10,11 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface SupplyUsageMapper {
 
-    @Mapping(target = "hospitalizaciontId", source = "hospitalization.id")
-    @Mapping(target = "supply", source = "supply.name")
+    @Mapping(target = "hospitalizationId", source = "hospitalization.id")
+    @Mapping(target = "supplyId", source = "supply.id")
+    @Mapping(target = "supplyName", source = "supply.name")
+    @Mapping(target = "unit", source = "supply.unit")
     SupplyUsageResponseDto toResponseDto(SupplyUsage supplyUsage);
 
-    List<SupplyUsageResponseDto> toListoDto(List<SupplyUsage> supplyUsages);
+    List<SupplyUsageResponseDto> toListDto(List<SupplyUsage> supplyUsages);
 }

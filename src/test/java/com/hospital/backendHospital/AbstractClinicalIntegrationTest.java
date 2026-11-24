@@ -88,9 +88,9 @@ public abstract class AbstractClinicalIntegrationTest extends AbstractIntegratio
                 .phoneNumber("5587654321")
                 .address("Calle de prueba 123")
                 .dateOfBirth(LocalDate.of(1990, 5, 20))
-                .gender("F")
+                .gender(Gender.FEMALE)
                 .allergies("Ninguna")
-                .bloodType("O+")
+                .bloodType(BloodType.O_POSITIVE)
                 .chronicDiseases("Ninguna")
                 .currentMedications("Ninguno")
                 .emergencyContact("5500000000")
@@ -131,12 +131,14 @@ public abstract class AbstractClinicalIntegrationTest extends AbstractIntegratio
                 .room(room)
                 .admissionDate(LocalDate.now())
                 .reason("Observacion")
+                .costPerDay(BigDecimal.valueOf(1000))
                 .build());
     }
 
     protected MedicalRecord createMedicalRecord(Patient patient, String diagnostics) {
         return medicalRecordRepository.save(MedicalRecord.builder()
                 .patient(patient)
+                .doctor(null)
                 .date(LocalDate.now())
                 .diagnostics(diagnostics)
                 .treatment("Reposo")
@@ -148,7 +150,7 @@ public abstract class AbstractClinicalIntegrationTest extends AbstractIntegratio
                 .name(name)
                 .quantity(100)
                 .minimumStock(10)
-                .unity(UnityEnum.BOX)
+                .unit(Unit.BOX)
                 .build());
     }
 }

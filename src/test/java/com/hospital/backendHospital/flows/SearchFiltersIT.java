@@ -48,7 +48,7 @@ class SearchFiltersIT extends AbstractClinicalIntegrationTest {
         createSupply("Gasas Esteriles " + tag.toUpperCase());
         createSupply("Jeringas 5ml");
 
-        JsonNode result = page(get("/api/v1/medicalSupplies").param("name", "esteriles " + tag));
+        JsonNode result = page(get("/api/v1/medical-supplies").param("name", "esteriles " + tag));
 
         assertThat(total(result)).isEqualTo(1);
         assertThat(result.get("content").get(0).get("name").asText()).isEqualTo("Gasas Esteriles " + tag.toUpperCase());

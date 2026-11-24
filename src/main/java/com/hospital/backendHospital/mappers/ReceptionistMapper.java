@@ -1,6 +1,6 @@
 package com.hospital.backendHospital.mappers;
 
-import com.hospital.backendHospital.models.dto.recepcionist.ReceptionistResponseDto;
+import com.hospital.backendHospital.models.dto.receptionist.ReceptionistResponseDto;
 import com.hospital.backendHospital.models.entity.User;
 import org.mapstruct.Mapper;
 

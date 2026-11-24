@@ -11,10 +11,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class AuthRequest {
-
-    @NotBlank(message = "Email is required")
+    @NotBlank(message = "El email es obligatorio")
     private String email;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "La contraseña es obligatoria")
     private String password;
 }

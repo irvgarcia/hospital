@@ -1,11 +1,7 @@
 package com.hospital.backendHospital.services;
 
-import com.hospital.backendHospital.models.entity.User;
-import jakarta.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
-
 public interface IPDFGeneratorService {
 
-    public void export(HttpServletResponse response, Long patientId) throws IOException;
+    /** Expediente del paciente en PDF (M7): datos, historial clinico, citas y hospitalizaciones. */
+    byte[] generateMedicalRecord(Long patientId);
 }

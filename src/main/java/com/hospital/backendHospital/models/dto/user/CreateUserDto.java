@@ -8,25 +8,26 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/** Registro publico de un paciente (solo el usuario; el perfil se completa despues). */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class CreateUserDto {
-
-    @Email(message = "Email must be valid")
-    @NotBlank(message = "Email is required")
+    @Email(message = "El email no es válido")
+    @NotBlank(message = "El email es obligatorio")
+    @Size(max = 100, message = "El email no puede tener más de 100 caracteres")
     private String email;
 
-    @Size(min = 5, max = 20, message = "First name must be between 5 and 20 characters")
-    @NotBlank(message = "First name is required")
+    @NotBlank(message = "El nombre es obligatorio")
+    @Size(min = 2, max = 50, message = "El nombre debe tener entre 2 y 50 caracteres")
     private String firstName;
 
-    @Size(min = 5, max = 20, message = "Last name must be between 5 and 20 characters")
-    @NotBlank(message = "Last name is required")
+    @NotBlank(message = "El apellido es obligatorio")
+    @Size(min = 2, max = 50, message = "El apellido debe tener entre 2 y 50 caracteres")
     private String lastName;
 
-    @Size(min = 8, message = "The password must be at least 8 characters")
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "La contraseña es obligatoria")
+    @Size(min = 8, max = 100, message = "La contraseña debe tener entre 8 y 100 caracteres")
     private String password;
 }
