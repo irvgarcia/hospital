@@ -5,7 +5,7 @@ Sistema de gestión hospitalaria: pacientes, doctores y horarios, citas, histori
 - **Backend:** Spring Boot 3.4 · Java 21 · MySQL 8 · Flyway · JWT (access + refresh con rotación) · springdoc.
 - **Frontend:** React 19 · TypeScript · Vite · Tailwind CSS 4 · TanStack Query (carpeta [`frontend/`](frontend)).
 
-El análisis original y el registro de decisiones de cada fase están en [`docs/analisis-backend-y-plan-de-correccion.md`](docs/analisis-backend-y-plan-de-correccion.md).
+Los diagramas de la base de datos y de la arquitectura (backend, seguridad, permisos por rol y frontend) están en [`docs/arquitectura.html`](docs/arquitectura.html) (ábrelo en el navegador).
 
 ## Puesta en marcha (desarrollo)
 
